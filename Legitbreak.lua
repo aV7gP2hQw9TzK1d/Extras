@@ -9,7 +9,6 @@ player.CharacterAdded:Connect(function(char) character = char end)
 local noclipEnabled = false
 local highlightEnabled = false
 local resizeEnabled = false
-local walkspeedEnabled = false
 local currentTeam = player.Team
 local partsToNoclip = {"UpperTorso", "LowerTorso", "HumanoidRootPart"}
 
@@ -47,35 +46,6 @@ Main:AddSwitch("NoClip", function(bool)
 		setNoclipState(true)
 	end
 end):Set(false)
-
-local walkspeedEnabled = false
-local walkspeedConnection = nil
-
-local function lockWalkSpeed(enabled)
-	if walkspeedConnection then
-		walkspeedConnection:Disconnect()
-		walkspeedConnection = nil
-	end
-
-	if enabled then
-		walkspeedConnection = RunService.Heartbeat:Connect(function()
-			local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
-			if humanoid and humanoid.WalkSpeed ~= 100 then
-				humanoid.WalkSpeed = 100
-			end
-		end)
-	else
-		local humanoid = character and character:FindFirstChildWhichIsA("Humanoid")
-		if humanoid then
-			humanoid.WalkSpeed = 16
-		end
-	end
-end
-
-Main:AddSwitch("WalkSpeed Bypass", function(state)
-	walkspeedEnabled = state
-	lockWalkSpeed(state)
-end)
 
 
 -- ESP Highlight & Billboard logic
