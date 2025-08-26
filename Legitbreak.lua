@@ -1,14 +1,19 @@
+-- Services
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
+-- Character tracking
 local character = player.Character or player.CharacterAdded:Wait()
 player.CharacterAdded:Connect(function(char) character = char end)
 
+-- Feature toggles
 local noclipEnabled = false
 local highlightEnabled = false
 local resizeEnabled = false
+local airJumpEnabled = false -- NEW: Air jump toggle
 local currentTeam = player.Team
 local partsToNoclip = {"UpperTorso", "LowerTorso", "HumanoidRootPart"}
 
@@ -21,7 +26,6 @@ local window = library:AddWindow("Legitbreak | ALPHA v0.1", {
 })
 local Main = window:AddTab("Main")
 Main:Show()
-
 Main:AddLabel("Features")
 
 -- NoClip logic
@@ -47,8 +51,7 @@ Main:AddSwitch("NoClip", function(bool)
 	end
 end):Set(false)
 
-
--- ESP Highlight & Billboard logic
+-- ESP & Billboard logic
 local function addHighlight(target, color)
 	if target and not target:FindFirstChild("Highlight") then
 		local hl = Instance.new("Highlight")
@@ -91,13 +94,9 @@ local function removeAllHighlightsAndBillboards()
 			local char = otherPlayer.Character
 			if char then
 				local hl = char:FindFirstChild("Highlight")
-				if hl then
-					hl:Destroy()
-				end
+				if hl then hl:Destroy() end
 				local bb = char:FindFirstChild("DisplayNameBillboard")
-				if bb then
-					bb:Destroy()
-				end
+				if bb then bb:Destroy() end
 			end
 		end
 	end
@@ -109,9 +108,7 @@ local function resetEnemyHumanoidRootParts()
 			local char = otherPlayer.Character
 			if char then
 				local hrp = char:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					hrp.Size = Vector3.new(2, 2, 2)
-				end
+				if hrp then hrp.Size = Vector3.new(2, 2, 2) end
 			end
 		end
 	end
@@ -130,9 +127,7 @@ local function updateEnemyVisuals()
 					end
 					if resizeEnabled then
 						local hrp = char:FindFirstChild("HumanoidRootPart")
-						if hrp then
-							hrp.Size = Vector3.new(12, 12, 12)
-						end
+						if hrp then hrp.Size = Vector3.new(12, 12, 12) end
 					end
 				end
 			end
@@ -154,15 +149,43 @@ end)
 Main:AddSwitch("ESP", function(bool)
 	highlightEnabled = bool
 	currentTeam = player.Team
-	if not bool then
-		removeAllHighlightsAndBillboards()
-	end
+	if not bool then removeAllHighlightsAndBillboards() end
 end)
 
 Main:AddSwitch("Extend Hitboxes", function(bool)
 	resizeEnabled = bool
 	currentTeam = player.Team
-	if not bool then
-		resetEnemyHumanoidRootParts()
+	if not bool then resetEnemyHumanoidRootParts() end
+end)
+
+-- AIR JUMP LOGIC
+local humanoid = character:WaitForChild("Humanoid")
+local jumpPressed = false
+
+-- Update humanoid on respawn
+player.CharacterAdded:Connect(function(char)
+	humanoid = char:WaitForChild("Humanoid")
+end)
+
+-- Jump detection
+UserInputService.JumpRequest:Connect(function()
+	if not airJumpEnabled then return end -- Only works when toggle is on
+	if jumpPressed then return end -- Prevent spam while holding
+	jumpPressed = true
+
+	if humanoid and humanoid.FloorMaterial == Enum.Material.Air then
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 	end
 end)
+
+-- Reset jumpPressed when space released
+UserInputService.InputEnded:Connect(function(input, processed)
+	if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
+		jumpPressed = false
+	end
+end)
+
+-- Air jump toggle in UI
+Main:AddSwitch("Air Jump", function(bool)
+	airJumpEnabled = bool
+end):Set(false)
