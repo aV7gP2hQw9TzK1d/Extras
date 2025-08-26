@@ -16,7 +16,7 @@ local partsToNoclip = {"UpperTorso", "LowerTorso", "HumanoidRootPart"}
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/memejames/elerium-v2-ui-library/main/Library", true))()
 local window = library:AddWindow("Legitbreak | ALPHA v0.1", {
 	main_color = Color3.fromRGB(255, 0, 0),
-	min_size = Vector2.new(250, 346),
+	min_size = Vector2.new(250, 250),
 	can_resize = false,
 })
 local Main = window:AddTab("Main")
