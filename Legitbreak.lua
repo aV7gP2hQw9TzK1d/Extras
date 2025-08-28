@@ -189,3 +189,29 @@ end)
 Main:AddSwitch("Air Jump", function(bool)
 	airJumpEnabled = bool
 end):Set(false)
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- Function to check if a humanoid belongs to a player
+local function isPlayerCharacter(humanoid)
+    local character = humanoid.Parent
+    if not character then return false end
+    local player = Players:GetPlayerFromCharacter(character)
+    return player ~= nil
+end
+
+-- Function to kill all NPCs
+local function killAllNPCs()
+    for _, descendant in ipairs(Workspace:GetDescendants()) do
+        if descendant:IsA("Humanoid") and not isPlayerCharacter(descendant) then
+            descendant.Health = 0
+        end
+    end
+end
+
+-- Button calls the function
+Main:AddButton("Kill All NPC", function()
+    killAllNPCs()
+end)
