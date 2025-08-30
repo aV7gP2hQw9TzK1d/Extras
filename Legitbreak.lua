@@ -202,14 +202,29 @@ local function isPlayerCharacter(humanoid)
     return player ~= nil
 end
 
--- Function to kill all NPCs
+-- Function to check if a humanoid is part of ActiveBoss
+local function isActiveBoss(humanoid)
+    local parent = humanoid.Parent
+    while parent do
+        if parent.Name == "ActiveBoss" then
+            return true
+        end
+        parent = parent.Parent
+    end
+    return false
+end
+
+-- Function to kill all NPCs except ActiveBoss
 local function killAllNPCs()
     for _, descendant in ipairs(Workspace:GetDescendants()) do
-        if descendant:IsA("Humanoid") and not isPlayerCharacter(descendant) then
+        if descendant:IsA("Humanoid") 
+        and not isPlayerCharacter(descendant) 
+        and not isActiveBoss(descendant) then
             descendant.Health = 0
         end
     end
 end
+
 
 -- Button calls the function
 Main:AddButton("Kill All NPC", function()
