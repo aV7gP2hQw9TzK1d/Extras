@@ -19,7 +19,7 @@ local partsToNoclip = {"UpperTorso", "LowerTorso", "HumanoidRootPart"}
 
 -- UI Library Setup
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/memejames/elerium-v2-ui-library/main/Library", true))()
-local window = library:AddWindow("Legitbreak | ALPHA v0.1", {
+local window = library:AddWindow("Legitbreak | ALPHA v0.3", {
 	main_color = Color3.fromRGB(255, 0, 0),
 	min_size = Vector2.new(250, 250),
 	can_resize = false,
@@ -214,4 +214,34 @@ end
 -- Button calls the function
 Main:AddButton("Kill All NPC", function()
     killAllNPCs()
+end)
+
+-- Money Earned tracker
+local moneyEarned = 0
+local moneyLabel = Main:AddLabel("Money Earned: 0")
+
+local leaderstats = player:WaitForChild("leaderstats")
+local money = leaderstats:WaitForChild("Money")
+local lastMoney = money.Value
+
+-- Number formatting function (adds commas)
+local function formatNumber(n)
+	return tostring(n):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+end
+
+local function updateMoneyLabel()
+	moneyLabel.Text = "Money Earned: " .. formatNumber(moneyEarned)
+end
+
+money:GetPropertyChangedSignal("Value"):Connect(function()
+	local newMoney = money.Value
+	local diff = newMoney - lastMoney
+
+	-- Only count positive changes (earned money, not spent)
+	if diff > 0 then
+		moneyEarned = moneyEarned + diff
+		updateMoneyLabel()
+	end
+
+	lastMoney = newMoney
 end)
