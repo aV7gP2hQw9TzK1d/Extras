@@ -1,3 +1,9 @@
+-- Executable Loadstring: loadstring(game:HttpGet('https://raw.githubusercontent.com/aV7gP2hQw9TzK1d/Extras/refs/heads/main/Legitbreak.lua'))()
+
+
+
+
+
 -- Services
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
@@ -27,7 +33,7 @@ local rightMouseDown = false
 
 -- UI Library Setup
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/memejames/elerium-v2-ui-library/main/Library", true))()
-local window = library:AddWindow("Legitbreak | ALPHA v0.7", {
+local window = library:AddWindow("Legitbreak | ALPHA v0.8", {
 	main_color = Color3.fromRGB(255, 0, 0),
 	min_size = Vector2.new(250, 290),
 	can_resize = false,
@@ -39,12 +45,12 @@ Main:AddLabel("🔑 | Features")
 -- Create circle UI
 local function createAimbotCircle()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "AimbotGUI"
+    screenGui.Name = "EgeDidSomething1"
     screenGui.Parent = game:GetService("CoreGui")
     screenGui.IgnoreGuiInset = true
 
     local circle = Instance.new("Frame")
-    circle.Name = "AimbotCircle"
+    circle.Name = "EgeDidSomething2"
     circle.Size = UDim2.new(0, 150, 0, 150)
     circle.AnchorPoint = Vector2.new(0.5, 0.5)
     circle.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -215,7 +221,7 @@ local function addFakeHitbox(char)
         local hitbox = Instance.new("Part")
         hitbox.Name = "FakeHitbox"
         hitbox.Size = Vector3.new(12, 12, 12)
-        hitbox.Transparency = 0.5 -- for testing (set to 1 later)
+        hitbox.Transparency = 1 -- for testing (set to 1 later)
         hitbox.Color = Color3.fromRGB(255, 0, 0)
         hitbox.CanCollide = false
         hitbox.Massless = true
