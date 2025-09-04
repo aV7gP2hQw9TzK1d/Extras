@@ -1,15 +1,13 @@
 -- Executable Loadstring: loadstring(game:HttpGet('https://raw.githubusercontent.com/aV7gP2hQw9TzK1d/Extras/refs/heads/main/Legitbreak.lua'))()
 
-
-
-
-
 -- Services
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
@@ -25,6 +23,53 @@ local airJumpEnabled = false -- NEW: Air jump toggle
 local currentTeam = player.Team
 local partsToNoclip = {"UpperTorso", "LowerTorso", "HumanoidRootPart"}
 local autoSprintEnabled = false
+local airdropNotifierEnabled = false
+local childAddedConn, childRemovedConn = nil, nil
+
+-- Target CFrame
+local lockedCFrame = CFrame.new(
+    732.684265, 40.1631851, 1104.86279,
+    0.381594092, -0.081174925, -0.920758724,
+    0, 0.996136427, -0.0878202766,
+    0.924330115, 0.0335116982, 0.380119652
+)
+
+local isLocked = false
+local originalCFrame = nil
+local connection = nil
+
+local function toggleCamera()
+	if not isLocked then
+		-- Save original CFrame and lock to the target
+		originalCFrame = Camera.CFrame
+		isLocked = true
+		Camera.CameraType = Enum.CameraType.Scriptable
+		Camera.CFrame = lockedCFrame
+
+		-- Keep Camera locked every frame
+		connection = RunService.RenderStepped:Connect(function()
+			Camera.CFrame = lockedCFrame
+		end)
+	else
+		-- Unlock and revert to original Camera
+		isLocked = false
+		Camera.CameraType = Enum.CameraType.Custom
+		if connection then
+			connection:Disconnect()
+			connection = nil
+		end
+		if originalCFrame then
+			Camera.CFrame = originalCFrame
+		end
+	end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.F1 then
+		toggleCamera()
+	end
+end)
 
 -- AIMBOT LOGIC
 local aimbotEnabled = false
@@ -33,9 +78,9 @@ local rightMouseDown = false
 
 -- UI Library Setup
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/memejames/elerium-v2-ui-library/main/Library", true))()
-local window = library:AddWindow("Legitbreak | ALPHA v0.8", {
+local window = library:AddWindow("Legitbreak | RELEASE v1.4", {
 	main_color = Color3.fromRGB(255, 0, 0),
-	min_size = Vector2.new(250, 290),
+	min_size = Vector2.new(250, 360),
 	can_resize = false,
 })
 local Main = window:AddTab("Main")
@@ -132,13 +177,11 @@ RunService.RenderStepped:Connect(function()
     if aimbotEnabled and rightMouseDown then
         local targetHRP = getClosestTarget()
         if targetHRP then
-            -- Smooth snap camera to the target's Torso/UpperTorso
             local targetPos = targetHRP.Position
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
         end
     end
 end)
-
 
 -- NoClip logic
 local function setNoclipState(state)
@@ -221,23 +264,21 @@ local function addFakeHitbox(char)
         local hitbox = Instance.new("Part")
         hitbox.Name = "FakeHitbox"
         hitbox.Size = Vector3.new(12, 12, 12)
-        hitbox.Transparency = 1 -- for testing (set to 1 later)
+        hitbox.Transparency = 1
         hitbox.Color = Color3.fromRGB(255, 0, 0)
         hitbox.CanCollide = false
         hitbox.Massless = true
         hitbox.Anchored = false
         hitbox.Parent = char
 
-        -- Use a Motor6D instead of WeldConstraint for proper alignment
         local motor = Instance.new("Motor6D")
         motor.Name = "HitboxMotor"
         motor.Part0 = hrp
         motor.Part1 = hitbox
-        motor.C0 = CFrame.new() -- keep centered
+        motor.C0 = CFrame.new()
         motor.Parent = hrp
     end
 end
-
 
 local function removeFakeHitbox(char)
 	local fake = char:FindFirstChild("FakeHitbox")
@@ -359,6 +400,89 @@ local function isPlayerCharacter(humanoid)
 	return plr ~= nil
 end
 
+-- AIRDROP NOTIFIER LOGIC
+local StarterGui = game:GetService("StarterGui")
+local airdropNotifierEnabled = false
+local childAddedConn, childRemovedConn = nil, nil
+
+-- Function to highlight a Drop
+local function highlightDrop(obj)
+	if not obj:FindFirstChild("AirDropHighlight") then
+		local hl = Instance.new("Highlight")
+		hl.Name = "AirDropHighlight"
+		hl.FillColor = Color3.fromRGB(255, 255, 0) -- Yellow
+		hl.OutlineColor = Color3.fromRGB(255, 255, 255) -- White
+		hl.FillTransparency = 0.25
+		hl.OutlineTransparency = 0
+		hl.Parent = obj
+	end
+end
+
+-- Function to remove highlight if exists
+local function unhighlightDrop(obj)
+	local hl = obj:FindFirstChild("AirDropHighlight")
+	if hl then
+		hl:Destroy()
+	end
+end
+
+-- Function to send Roblox notification
+local function notifyDrop(msg)
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = "AirDrop Alert 🚁",
+			Text = msg,
+			Duration = 5
+		})
+	end)
+end
+
+-- Enable/Disable logic
+local function enableAirdropNotifier()
+	-- Check for already existing Drops
+	for _, obj in ipairs(Workspace:GetChildren()) do
+		if obj.Name == "Drop" then
+			highlightDrop(obj)
+			notifyDrop("An AirDrop is already on the map!")
+		end
+	end
+
+	childAddedConn = Workspace.ChildAdded:Connect(function(child)
+		if child.Name == "Drop" then
+			highlightDrop(child)
+			notifyDrop("A new AirDrop has spawned!")
+		end
+	end)
+end
+
+local function disableAirdropNotifier()
+	if childAddedConn then
+		childAddedConn:Disconnect()
+		childAddedConn = nil
+	end
+	if childRemovedConn then
+		childRemovedConn:Disconnect()
+		childRemovedConn = nil
+	end
+
+	-- Clean up highlights
+	for _, obj in ipairs(Workspace:GetChildren()) do
+		if obj.Name == "Drop" then
+			unhighlightDrop(obj)
+		end
+	end
+end
+
+-- Add Switch to UI
+Main:AddSwitch("AirDrop Notifier", function(state)
+	airdropNotifierEnabled = state
+	if state then
+		enableAirdropNotifier()
+	else
+		disableAirdropNotifier()
+	end
+end)
+
 local function isActiveBoss(humanoid)
 	local parent = humanoid.Parent
 	while parent do
@@ -384,20 +508,34 @@ Main:AddButton("Kill All NPC", function()
 	killAllNPCs()
 end)
 
--- Money Earned tracker
+-- 💰 Money Earned tracker
 local moneyEarned = 0
 local moneyLabel = Main:AddLabel("💰 | Money Earned: $0")
 
-local leaderstats = player:WaitForChild("leaderstats")
-local money = leaderstats:WaitForChild("Money")
-local lastMoney = money.Value
+-- NEW: All-Time Earnings
+local allTimeFile = "Xeno\workspace"
+local allTimeEarnings = 0
+pcall(function()
+	if isfile(allTimeFile) then
+		local data = HttpService:JSONDecode(readfile(allTimeFile))
+		allTimeEarnings = data.AllTime or 0
+	end
+end)
 
 local function formatNumber(n)
 	return tostring(n):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
 end
 
+local allTimeLabel = Main:AddLabel("📊 | All-Time Earnings: $" .. formatNumber(allTimeEarnings))
+
+
+local leaderstats = player:WaitForChild("leaderstats")
+local money = leaderstats:WaitForChild("Money")
+local lastMoney = money.Value
+
 local function updateMoneyLabel()
 	moneyLabel.Text = "💰 | Money Earned: $" .. formatNumber(moneyEarned)
+	allTimeLabel.Text = "📊 | All-Time Earnings: $" .. formatNumber(allTimeEarnings)
 end
 
 money:GetPropertyChangedSignal("Value"):Connect(function()
@@ -406,8 +544,45 @@ money:GetPropertyChangedSignal("Value"):Connect(function()
 
 	if diff > 0 then
 		moneyEarned = moneyEarned + diff
+		allTimeEarnings = allTimeEarnings + diff
 		updateMoneyLabel()
+		writefile(allTimeFile, HttpService:JSONEncode({AllTime = allTimeEarnings}))
 	end
 
 	lastMoney = newMoney
+end)
+
+-- ⏱ Estimated Hourly Revenue
+local estimatedLabel = Main:AddLabel("🕗 | Hourly Revenue: $0")
+
+-- Track earnings over time
+local startTime = tick()
+local prevMoneyEarned = moneyEarned
+
+local function updateEstimatedRevenue()
+	local currentTime = tick()
+	local elapsedTime = currentTime - startTime -- in seconds
+	local earnedSinceStart = moneyEarned
+	if elapsedTime > 0 then
+		-- calculate revenue per second and extrapolate to hourly
+		local perSecond = earnedSinceStart / elapsedTime
+		local estimatedHourly = perSecond * 3600
+		estimatedLabel.Text = "🕗 | Hourly Revenue: $" .. formatNumber(math.floor(estimatedHourly))
+	end
+end
+
+-- Connect to money changes
+money:GetPropertyChangedSignal("Value"):Connect(function()
+	updateEstimatedRevenue()
+end)
+
+local lastUpdate = 0
+local updateInterval = 2 -- seconds
+
+RunService.Heartbeat:Connect(function()
+	local now = tick()
+	if now - lastUpdate >= updateInterval then
+		lastUpdate = now
+		updateEstimatedRevenue()
+	end
 end)
