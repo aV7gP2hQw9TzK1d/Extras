@@ -42,9 +42,11 @@ local espEnabled = false
 local highlights = {}
 local aimbotEnabled = false
 
--- HeadHB Resizer settings
-local headResizerEnabled = false
-local resizeConnection
+-- Head hitbox resizer settings
+local resizeEnabled = false
+local resizeInterval = 2
+local resizeSize = Vector3.new(12, 12, 12)
+local lastResizeTime = 0
 
 -- Helper function: get closest enemy target inside circle (head as round)
 local function getClosestTarget()
@@ -113,20 +115,15 @@ local function updateESP()
     end
 end
 
--- Function to resize one player's HeadHB
-local function resizePlayerHeadHB(otherPlayer)
-    if otherPlayer ~= player and otherPlayer.Team ~= player.Team and otherPlayer.Character then
-        local headHB = otherPlayer.Character:FindFirstChild("HeadHB")
-        if headHB and headHB:IsA("BasePart") then
-            headHB.Size = Vector3.new(12, 12, 12)
-        end
-    end
-end
-
--- Function to resize all current enemies
-local function resizeHeadHBs()
+-- Function to resize enemy hitboxes
+local function resizeEnemyHitboxes()
     for _, otherPlayer in ipairs(Players:GetPlayers()) do
-        resizePlayerHeadHB(otherPlayer)
+        if otherPlayer ~= player and otherPlayer.Team ~= player.Team and otherPlayer.Character then
+            local headHB = otherPlayer.Character:FindFirstChild("HeadHB")
+            if headHB and headHB:IsA("BasePart") then
+                headHB.Size = resizeSize
+            end
+        end
     end
 end
 
@@ -154,47 +151,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
 
     elseif input.KeyCode == Enum.KeyCode.F3 then
-        headResizerEnabled = not headResizerEnabled
-        print("Head Resizer: " .. (headResizerEnabled and "ON" or "OFF"))
-
-        if headResizerEnabled then
-            -- Resize immediately
-            resizeHeadHBs()
-
-            -- Loop every 2s
-            resizeConnection = RunService.Heartbeat:Connect(function()
-                if not resizeConnection._lastTime or tick() - resizeConnection._lastTime >= 2 then
-                    resizeHeadHBs()
-                    resizeConnection._lastTime = tick()
-                end
-            end)
-
-            -- Hook new players
-            Players.PlayerAdded:Connect(function(p)
-                p.CharacterAdded:Connect(function()
-                    if headResizerEnabled then
-                        task.wait(1)
-                        resizePlayerHeadHB(p)
-                    end
-                end)
-            end)
-
-            -- Hook respawns
-            for _, p in ipairs(Players:GetPlayers()) do
-                p.CharacterAdded:Connect(function()
-                    if headResizerEnabled then
-                        task.wait(1)
-                        resizePlayerHeadHB(p)
-                    end
-                end)
-            end
-
-        else
-            if resizeConnection then
-                resizeConnection:Disconnect()
-                resizeConnection = nil
-            end
-        end
+        resizeEnabled = not resizeEnabled
+        print("HeadHB Resizer: " .. (resizeEnabled and "ON" or "OFF"))
     end
 end)
 
@@ -218,9 +176,26 @@ RunService.RenderStepped:Connect(function(delta)
     if espEnabled then
         updateESP()
     end
+
+    if resizeEnabled and tick() - lastResizeTime >= resizeInterval then
+        resizeEnemyHitboxes()
+        lastResizeTime = tick()
+    end
 end)
 
--- Player removed listener for ESP cleanup
+-- Player added/removed listeners for dynamic ESP + resizer
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        if espEnabled then
+            addHighlightToPlayer(p)
+        end
+        if resizeEnabled then
+            task.wait(1) -- give time to load
+            resizeEnemyHitboxes()
+        end
+    end)
+end)
+
 Players.PlayerRemoving:Connect(function(playerRemoved)
     if highlights[playerRemoved] then
         highlights[playerRemoved]:Destroy()
