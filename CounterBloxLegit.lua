@@ -42,6 +42,10 @@ local espEnabled = false
 local highlights = {}
 local aimbotEnabled = false
 
+-- HeadHB Resizer settings
+local headResizerEnabled = false
+local resizeConnection
+
 -- Helper function: get closest enemy target inside circle (head as round)
 local function getClosestTarget()
     local closest = nil
@@ -109,6 +113,23 @@ local function updateESP()
     end
 end
 
+-- Function to resize one player's HeadHB
+local function resizePlayerHeadHB(otherPlayer)
+    if otherPlayer ~= player and otherPlayer.Team ~= player.Team and otherPlayer.Character then
+        local headHB = otherPlayer.Character:FindFirstChild("HeadHB")
+        if headHB and headHB:IsA("BasePart") then
+            headHB.Size = Vector3.new(12, 12, 12)
+        end
+    end
+end
+
+-- Function to resize all current enemies
+local function resizeHeadHBs()
+    for _, otherPlayer in ipairs(Players:GetPlayers()) do
+        resizePlayerHeadHB(otherPlayer)
+    end
+end
+
 -- Input detection
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -130,6 +151,49 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             highlights = {}
         else
             updateESP()
+        end
+
+    elseif input.KeyCode == Enum.KeyCode.F3 then
+        headResizerEnabled = not headResizerEnabled
+        print("Head Resizer: " .. (headResizerEnabled and "ON" or "OFF"))
+
+        if headResizerEnabled then
+            -- Resize immediately
+            resizeHeadHBs()
+
+            -- Loop every 2s
+            resizeConnection = RunService.Heartbeat:Connect(function()
+                if not resizeConnection._lastTime or tick() - resizeConnection._lastTime >= 2 then
+                    resizeHeadHBs()
+                    resizeConnection._lastTime = tick()
+                end
+            end)
+
+            -- Hook new players
+            Players.PlayerAdded:Connect(function(p)
+                p.CharacterAdded:Connect(function()
+                    if headResizerEnabled then
+                        task.wait(1)
+                        resizePlayerHeadHB(p)
+                    end
+                end)
+            end)
+
+            -- Hook respawns
+            for _, p in ipairs(Players:GetPlayers()) do
+                p.CharacterAdded:Connect(function()
+                    if headResizerEnabled then
+                        task.wait(1)
+                        resizePlayerHeadHB(p)
+                    end
+                end)
+            end
+
+        else
+            if resizeConnection then
+                resizeConnection:Disconnect()
+                resizeConnection = nil
+            end
         end
     end
 end)
@@ -156,15 +220,7 @@ RunService.RenderStepped:Connect(function(delta)
     end
 end)
 
--- Player added/removed listeners for dynamic ESP
-Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function()
-        if espEnabled then
-            addHighlightToPlayer(p)
-        end
-    end)
-end)
-
+-- Player removed listener for ESP cleanup
 Players.PlayerRemoving:Connect(function(playerRemoved)
     if highlights[playerRemoved] then
         highlights[playerRemoved]:Destroy()
@@ -176,46 +232,3 @@ end)
 if espEnabled then
     updateESP()
 end
-
--- New feature: HeadHB Resizer
-local headResizerEnabled = false
-local resizeConnection
-
--- Function to resize all enemy HeadHB parts
-local function resizeHeadHBs()
-    for _, otherPlayer in ipairs(Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Team ~= player.Team and otherPlayer.Character then
-            local headHB = otherPlayer.Character:FindFirstChild("HeadHB")
-            if headHB and headHB:IsA("BasePart") then
-                headHB.Size = Vector3.new(12, 12, 12)
-            end
-        end
-    end
-end
-
--- Keybind for F3
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-
-    if input.KeyCode == Enum.KeyCode.F3 then
-        headResizerEnabled = not headResizerEnabled
-        print("Head Resizer: " .. (headResizerEnabled and "ON" or "OFF"))
-
-        if headResizerEnabled then
-            -- Start looping every 2 seconds
-            resizeConnection = RunService.Heartbeat:Connect(function(step)
-                -- Use tick() or os.clock() to throttle every 2 seconds
-                if not resizeConnection._lastTime or tick() - resizeConnection._lastTime >= 2 then
-                    resizeHeadHBs()
-                    resizeConnection._lastTime = tick()
-                end
-            end)
-        else
-            -- Stop the loop
-            if resizeConnection then
-                resizeConnection:Disconnect()
-                resizeConnection = nil
-            end
-        end
-    end
-end)
