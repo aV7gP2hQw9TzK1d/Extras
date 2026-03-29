@@ -97,6 +97,7 @@ local Settings = {
     AimbotVisCheck = false,
     AimbotSnapBack = false,
     AimbotAutoShoot = false, 
+    AimBlatantMode = false,
     AimbotAutoStop = false, 
     AimAutoShootMethod = "Hardware", 
     AimbotAutoShootCPS = 10,
@@ -349,6 +350,7 @@ end
 
 local AimAutomationSection = AimbotTab:CreateSection("Automation")
 UI.AimbotAutoShoot = AimbotTab:CreateToggle({Name = "Auto Shoot", CurrentValue = false, Flag = "AimAutoShoot", Callback = function(v) Settings.AimbotAutoShoot = v end}) 
+UI.AimBlatantMode = AimbotTab:CreateToggle({Name = "Blatant Auto Shoot", CurrentValue = false, Flag = "AimBlatant", Callback = function(v) Settings.AimBlatantMode = v end})
 UI.AimbotAutoStop = AimbotTab:CreateToggle({Name = "Auto Stop", CurrentValue = false, Flag = "AimAutoStop", Callback = function(v) Settings.AimbotAutoStop = v end})
 UI.AimAutoShootMethod = AimbotTab:CreateDropdown({
     Name = "Auto Shoot Method",
@@ -552,6 +554,8 @@ SettingsTab:CreateButton({
                     if UI[k] then
                         if k == "TracerOrigin" or k == "BoxType" or k == "AimbotLockPart" or k == "AimbotMouseBind" or k == "AimAutoShootMethod" or k == "AimbotMode" or k == "SpinbotPitch" or k == "SpinbotYaw" or k == "FlyMode" or k == "NoclipMode" or k == "WatermarkCorner" then
                             UI[k]:Set({Settings[k]})
+                        elseif k == "AimBlatantMode" then
+                            UI.AimBlatantMode:Set(Settings[k])
                         else
                             UI[k]:Set(Settings[k])
                         end
@@ -1156,8 +1160,10 @@ local function handleAimbot()
                         local viewDirection = Camera.CFrame.LookVector
                         
                         local isFacingTarget = viewDirection:Dot(directionToTarget) > 0.99
+                        
+                        local readyToShoot = Settings.AimBlatantMode or (isFacingTarget and screenDist <= math.max(partRadiusScreen * 1.5, 12))
 
-                        if isFacingTarget and screenDist <= math.max(partRadiusScreen * 1.5, 12) then
+                        if readyToShoot then
                             if tick() - LastShootTime >= (1 / Settings.AimbotAutoShootCPS) then 
                                 if Settings.AimbotAutoShootDelay > 0 then
                                     if not IsWaitingToShoot then
