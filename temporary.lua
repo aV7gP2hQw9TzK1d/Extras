@@ -11,9 +11,16 @@ local LocalPlayer = Players.LocalPlayer
 
 -- [[ STATIC MEMORY & OPTIMIZATION ARRAYS ]] --
 local DefaultFOV = Camera.FieldOfView
+
+-- Forward Raycast Params
 local GlobalRayParams = RaycastParams.new()
 GlobalRayParams.FilterType = Enum.RaycastFilterType.Exclude
 GlobalRayParams.IgnoreWater = true
+
+-- Reverse Raycast Params (Fixes the memory leak/FPS drop)
+local GlobalReverseRayParams = RaycastParams.new()
+GlobalReverseRayParams.FilterType = Enum.RaycastFilterType.Exclude
+GlobalReverseRayParams.IgnoreWater = true
 
 local CachedCharacter = nil
 local OriginalC0s = {}
@@ -95,6 +102,8 @@ local Settings = {
     AimbotSmoothness = 0, 
     AimbotLockPart = "Head",
     AimbotVisCheck = false,
+    AimbotWallbang = false,
+    AimbotWallThickness = 2.0,
     AimbotSnapBack = false,
     AimbotAutoShoot = false, 
     AimBlatantMode = false,
@@ -377,6 +386,10 @@ UI.AimbotAutoShootDelay = AimbotTab:CreateSlider({
     Flag = "AimAutoShootDelay", 
     Callback = function(v) Settings.AimbotAutoShootDelay = v end
 })
+
+local AutoWallSection = AimbotTab:CreateSection("Auto Wall")
+UI.AimbotWallbang = AimbotTab:CreateToggle({Name = "Auto Wall", CurrentValue = false, Flag = "AimWallbang", Callback = function(v) Settings.AimbotWallbang = v end}) 
+UI.AimbotWallThickness = AimbotTab:CreateSlider({Name = "Auto Wall Sensitivity", Range = {0.1, 15.0}, Increment = 0.1, Suffix = " studs", CurrentValue = 2.0, Flag = "AimWallThick", Callback = function(v) Settings.AimbotWallThickness = v end})
 
 local HitTraceSection = AimbotTab:CreateSection("Hit Traces")
 UI.AimHitTraces = AimbotTab:CreateToggle({Name = "Enable Hit Traces", CurrentValue = false, Flag = "AimHitTraces", Callback = function(v) Settings.AimHitTraces = v end})
@@ -925,10 +938,14 @@ end
 
 local function getLocalOrigin()
     if LocalPlayer.Character then
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            -- By adding a 1.5 stud vertical offset to the HRP, we create a stable
+            -- "phantom head" position that doesn't swing wildly during Spinbot.
+            return hrp.Position + Vector3.new(0, 1.5, 0)
+        end
         local head = LocalPlayer.Character:FindFirstChild("Head")
         if head then return head.Position end
-        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then return hrp.Position end
     end
     return Camera.CFrame.Position
 end
@@ -944,18 +961,36 @@ local function getTargetPart(character)
     return character:FindFirstChild("HumanoidRootPart")
 end
 
-local function getVisiblePoint(targetPart, targetCharacter)
+local function getVisiblePoint(targetPart, targetCharacter, checkWallbang)
     local origin = getLocalOrigin()
     local sizeX, sizeY, sizeZ = targetPart.Size.X / 2, targetPart.Size.Y / 2, targetPart.Size.Z / 2
     
+    -- Optimize by setting the param filter ONCE per character check to avoid memory leaks
+    if checkWallbang and Settings.AimbotWallbang then
+        GlobalReverseRayParams.FilterDescendantsInstances = {targetCharacter, LocalPlayer.Character}
+    end
+
     for i = 1, #VisibilityOffsets do
         local offset = VisibilityOffsets[i]
         local checkPos = targetPart.CFrame * Vector3.new(offset.X * sizeX, offset.Y * sizeY, offset.Z * sizeZ)
         local direction = checkPos - origin
+        
         local result = workspace:Raycast(origin, direction, GlobalRayParams)
         
         if not result or result.Instance:IsDescendantOf(targetCharacter) then
             return checkPos
+        end
+        
+        -- Reverse Raycast Check (Auto Wall)
+        if checkWallbang and Settings.AimbotWallbang then
+            local reverseResult = workspace:Raycast(checkPos, -direction, GlobalReverseRayParams)
+            
+            if result and reverseResult then
+                local thickness = (result.Position - reverseResult.Position).Magnitude
+                if thickness <= Settings.AimbotWallThickness then
+                    return checkPos 
+                end
+            end
         end
     end
     return nil
@@ -979,7 +1014,8 @@ local function getClosestPlayerToMouse()
             local physicalDistance = (originPos - targetPart.Position).Magnitude
             if physicalDistance > Settings.AimbotMaxDistance then continue end
             
-            local visPoint = getVisiblePoint(targetPart, player.Character)
+            -- Call respects Auto Wall
+            local visPoint = getVisiblePoint(targetPart, player.Character, true)
             if Settings.AimbotVisCheck and not visPoint then continue end
             local pointToUse = visPoint or targetPart.Position
 
@@ -1083,7 +1119,7 @@ local function handleAimbot()
             if not hasFF then
                 local tPart = getTargetPart(CurrentLockedTarget.Character)
                 if tPart then
-                    local visPoint = getVisiblePoint(tPart, CurrentLockedTarget.Character)
+                    local visPoint = getVisiblePoint(tPart, CurrentLockedTarget.Character, true)
                     if (not Settings.AimbotVisCheck) or visPoint then
                         local finalPos = visPoint or tPart.Position
                         local originPos = getLocalOrigin()
@@ -1122,7 +1158,7 @@ local function handleAimbot()
             
             local targetPart = getTargetPart(target.Character)
             if targetPart then
-                local visPoint = getVisiblePoint(targetPart, target.Character)
+                local visPoint = getVisiblePoint(targetPart, target.Character, true)
                 local targetPos = visPoint or targetPart.Position
                 
                 if targetPos then
@@ -1173,7 +1209,7 @@ local function handleAimbot()
                                             if CurrentLockedTarget and CurrentLockedTarget.Character then
                                                 local recheckPart = getTargetPart(CurrentLockedTarget.Character)
                                                 if recheckPart then
-                                                    local rv = getVisiblePoint(recheckPart, CurrentLockedTarget.Character)
+                                                    local rv = getVisiblePoint(recheckPart, CurrentLockedTarget.Character, true)
                                                     if (not Settings.AimbotVisCheck) or rv then
                                                         LastShootTime = tick()
                                                         executeShoot()
@@ -1286,9 +1322,10 @@ local function updateESP()
                 local head = player.Character:FindFirstChild("Head")
                 local torso = player.Character:FindFirstChild("UpperTorso") or player.Character:FindFirstChild("Torso")
                 
-                if head and getVisiblePoint(head, player.Character) then
+                -- False here ensures ESP doesn't falsely show penetrable walls as "open"
+                if head and getVisiblePoint(head, player.Character, false) then
                     isVisible = true
-                elseif torso and getVisiblePoint(torso, player.Character) then
+                elseif torso and getVisiblePoint(torso, player.Character, false) then
                     isVisible = true
                 end
                 
