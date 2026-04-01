@@ -17,7 +17,7 @@ local GlobalRayParams = RaycastParams.new()
 GlobalRayParams.FilterType = Enum.RaycastFilterType.Exclude
 GlobalRayParams.IgnoreWater = true
 
--- Reverse Raycast Params (Fixes the memory leak/FPS drop)
+-- Reverse Raycast Params
 local GlobalReverseRayParams = RaycastParams.new()
 GlobalReverseRayParams.FilterType = Enum.RaycastFilterType.Exclude
 GlobalReverseRayParams.IgnoreWater = true
@@ -48,15 +48,12 @@ local Box3D_Connections = {{1,2},{2,3},{3,4},{4,1},{5,6},{6,7},{7,8},{8,5},{1,5}
 local R15_Joints = {{"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"}, {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"}, {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"}, {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"}}
 local R6_Joints = {{"Head", "Torso"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"}, {"Torso", "Left Leg"}, {"Torso", "Right Leg"}}
 
--- [[ UTILITIES ]] --
-local function getKeyCodeFromString(keyStr)
-    if type(keyStr) ~= "string" or keyStr == "None" or keyStr == "" then return nil end
-    local success, key = pcall(function() return Enum.KeyCode[keyStr] end)
-    return success and key or nil
-end
-
 -- [[ UI LIBRARY ]] --
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
+
+local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
 
 -- [[ SETTINGS TABLE ]] --
 local Settings = {
@@ -68,12 +65,18 @@ local Settings = {
     
     -- [[ PLAYER SETTINGS ]] --
     PlayerMaster = false,
-    FlyEnabled = false, FlyMode = "Hold", FlyKey = "None", FlySpeed = 150,
-    NoclipEnabled = false, NoclipMode = "Hold", NoclipKey = "None",
+    FlyEnabled = false, FlyMode = "Hold", FlySpeed = 150,
+    NoclipEnabled = false, NoclipMode = "Hold",
     InfJumpEnabled = false,
-    TPForwardEnabled = false, TPForwardKey = "None", TPForwardStuds = 5,
+    TPForwardEnabled = false, TPForwardStuds = 5,
     StatsEnabled = false, WalkSpeed = DefaultWS, JumpPower = DefaultJP,
     BhopEnabled = false, BhopSpeed = 5,
+
+    -- [[ SPINBOT SETTINGS ]] --
+    SpinbotEnabled = false,
+    SpinbotPitch = "None",
+    SpinbotYaw = "Clockwise",
+    SpinbotSpeed = 10,
 
     -- Chams
     ChamsEnabled = false, ChamsColor = Color3.fromRGB(255, 0, 0), ChamsChroma = false, ChamsTeamColor = false,
@@ -92,9 +95,9 @@ local Settings = {
     SkelEnabled = false, SkelThickness = 1, SkelColor = Color3.fromRGB(255, 255, 255), SkelChroma = false, SkelTeamColor = false,
 
     -- [[ AIMBOT SETTINGS ]] --
-    AimbotMaster = false,
+    AimMaster = false,
+    AimbotEnabled = false,
     AimbotMode = "Hold",
-    AimbotHolding = false, 
     AimbotMouseBind = "Right Click",
     AimbotTeamCheck = false,
     AimIgnorePrisoners = false, 
@@ -121,16 +124,17 @@ local Settings = {
     AimbotPredX = 0,
     AimbotPredY = 0,
     
+    -- [[ TRIGGERBOT SETTINGS ]] --
+    TriggerbotEnabled = false,
+    TriggerbotVisCheck = false,
+    TriggerbotTeamCheck = false,
+    TriggerbotDelay = 0,
+    TriggerbotType = "Crosshair",
+
     -- [[ AIMBOT HIT TRACES ]] --
     AimHitTraces = false, 
     AimTraceColor = Color3.fromRGB(255, 0, 0), 
     AimTraceChroma = false,
-
-    -- [[ SPINBOT SETTINGS ]] --
-    SpinbotEnabled = false,
-    SpinbotPitch = "None",
-    SpinbotYaw = "Clockwise",
-    SpinbotSpeed = 10,
 
     -- [[ ENVIRONMENT SETTINGS ]] --
     EnvColorEnabled = false,
@@ -144,30 +148,26 @@ local Settings = {
     ThirdPersonDist = 15,
 
     -- [[ WATERMARK SETTINGS ]] --
-    WatermarkEnabled = false,
-    WatermarkCorner = "Top Left"
+    WatermarkEnabled = false
 }
 
--- [[ UI ELEMENT MAPPING ARRAY ]] --
-local UI = {}
-
 -- [[ WINDOW CREATION ]] --
-local Window = Rayfield:CreateWindow({
-   Name = "Project iWare | #REBORN | by Ege",
-   LoadingTitle = "Project iWare",
-   LoadingSubtitle = "Absolute Optimized Build",
-   Theme = "AmberGlow",
-   ConfigurationSaving = { Enabled = false }, 
-   KeySystem = false, 
+local Window = Library:CreateWindow({
+    Title = 'peekachu',
+    Center = true,
+    AutoShow = true,
+    TabPadding = 8,
+    MenuFadeTime = 0.2
 })
 
 -- [[ TABS ]] --
-local PlayerTab = Window:CreateTab("Player", "user")
-local VisualsTab = Window:CreateTab("Visuals", "eye")
-local AimbotTab = Window:CreateTab("Aimbot", "crosshair") 
-local MiscTab = Window:CreateTab("Miscellaneous", "component")
-local SettingsTab = Window:CreateTab("Settings", "settings")
-
+local Tabs = {
+    Player = Window:AddTab('Player'),
+    Visuals = Window:AddTab('Visuals'),
+    Aimbot = Window:AddTab('Aimbot'),
+    Misc = Window:AddTab('Miscellaneous'),
+    Settings = Window:AddTab('Settings & UI'),
+}
 
 -- ==========================================
 -- [[ PLAYER TAB UI ]]
@@ -179,119 +179,131 @@ local WasNoclipping = false
 local CurrentFlyGyro = nil
 local CurrentFlyVelocity = nil
 
-local PlayerGlobalSection = PlayerTab:CreateSection("Global Settings")
-UI.PlayerMaster = PlayerTab:CreateToggle({Name = "Master Switch", CurrentValue = false, Flag = "PlayerMaster", Callback = function(v) Settings.PlayerMaster = v end})
+local PlayerMasterGroup = Tabs.Player:AddLeftGroupbox("Global Settings")
+PlayerMasterGroup:AddToggle("PlayerMaster", {Text = "Master Switch", Default = false, Callback = function(v) Settings.PlayerMaster = v end})
 
-local FlySection = PlayerTab:CreateSection("Flight")
-UI.FlyEnabled = PlayerTab:CreateToggle({Name = "Enable Fly", CurrentValue = false, Flag = "FlyEnabled", Callback = function(v) Settings.FlyEnabled = v if not v then FlyActive = false end end})
-UI.FlyMode = PlayerTab:CreateDropdown({Name = "Fly Mode", Options = {"Hold", "Toggle"}, CurrentOption = {"Hold"}, Flag = "FlyMode", Callback = function(v) Settings.FlyMode = v[1] end})
-UI.FlyKey = PlayerTab:CreateKeybind({Name = "Fly Keybind", CurrentKeybind = "None", HoldToInteract = false, Flag = "FlyKey", Callback = function() if Settings.PlayerMaster and Settings.FlyEnabled and Settings.FlyMode == "Toggle" then FlyActive = not FlyActive end end})
-PlayerTab:CreateButton({Name = "Delete Fly Keybind", Callback = function() UI.FlyKey:Set("None") Settings.FlyKey = "None" FlyActive = false end})
-UI.FlySpeed = PlayerTab:CreateSlider({Name = "Fly Speed", Range = {10, 300}, Increment = 5, Suffix = " spd", CurrentValue = 150, Flag = "FlySpeed", Callback = function(v) Settings.FlySpeed = v end})
+local FlySection = Tabs.Player:AddLeftGroupbox("Flight")
+FlySection:AddToggle("FlyEnabled", {Text = "Enable Fly", Default = false, Callback = function(v) Settings.FlyEnabled = v if not v then FlyActive = false end end})
+FlySection:AddDropdown("FlyMode", {Values = {"Hold", "Toggle"}, Default = 1, Text = "Fly Mode", Callback = function(v) Settings.FlyMode = v end})
+FlySection:AddLabel("Fly Keybind"):AddKeyPicker("FlyKey", {Default = 'None', SyncToggleState = false, Mode = 'Toggle', Text = "Fly Keybind"})
+Options.FlyKey:OnClick(function() if Settings.PlayerMaster and Settings.FlyEnabled and Settings.FlyMode == "Toggle" then FlyActive = not FlyActive end end)
+FlySection:AddSlider("FlySpeed", {Text = "Fly Speed", Default = 150, Min = 10, Max = 300, Rounding = 0, Suffix = " spd", Callback = function(v) Settings.FlySpeed = v end})
 
-local NoclipSection = PlayerTab:CreateSection("Noclip")
-UI.NoclipEnabled = PlayerTab:CreateToggle({Name = "Enable Noclip", CurrentValue = false, Flag = "NoclipEnabled", Callback = function(v) Settings.NoclipEnabled = v if not v then NoclipActive = false end end})
-UI.NoclipMode = PlayerTab:CreateDropdown({Name = "Noclip Mode", Options = {"Hold", "Toggle", "Always On"}, CurrentOption = {"Hold"}, Flag = "NoclipMode", Callback = function(v) Settings.NoclipMode = v[1] end})
-UI.NoclipKey = PlayerTab:CreateKeybind({Name = "Noclip Keybind", CurrentKeybind = "None", HoldToInteract = false, Flag = "NoclipKey", Callback = function() if Settings.PlayerMaster and Settings.NoclipEnabled and Settings.NoclipMode == "Toggle" then NoclipActive = not NoclipActive end end})
-PlayerTab:CreateButton({Name = "Delete Noclip Keybind", Callback = function() UI.NoclipKey:Set("None") Settings.NoclipKey = "None" NoclipActive = false end})
+local NoclipSection = Tabs.Player:AddLeftGroupbox("Noclip")
+NoclipSection:AddToggle("NoclipEnabled", {Text = "Enable Noclip", Default = false, Callback = function(v) Settings.NoclipEnabled = v if not v then NoclipActive = false end end})
+NoclipSection:AddDropdown("NoclipMode", {Values = {"Hold", "Toggle", "Always On"}, Default = 1, Text = "Noclip Mode", Callback = function(v) Settings.NoclipMode = v end})
+NoclipSection:AddLabel("Noclip Keybind"):AddKeyPicker("NoclipKey", {Default = 'None', SyncToggleState = false, Mode = 'Toggle', Text = "Noclip Keybind"})
+Options.NoclipKey:OnClick(function() if Settings.PlayerMaster and Settings.NoclipEnabled and Settings.NoclipMode == "Toggle" then NoclipActive = not NoclipActive end end)
 
-local JumpSection = PlayerTab:CreateSection("Jumping")
-UI.InfJumpEnabled = PlayerTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Flag = "InfJumpEnabled", Callback = function(v) Settings.InfJumpEnabled = v end})
+local SpinbotSection = Tabs.Player:AddLeftGroupbox("Spinbot")
+SpinbotSection:AddToggle("SpinbotEnabled", {Text = "Enable Spinbot", Default = false, Callback = function(v) Settings.SpinbotEnabled = v end})
+SpinbotSection:AddDropdown("SpinbotPitch", {Values = {"None", "Sky", "Ground"}, Default = 1, Text = "Face Direction (Pitch)", Callback = function(v) Settings.SpinbotPitch = v end})
+SpinbotSection:AddDropdown("SpinbotYaw", {Values = {"Clockwise", "Counter-Clockwise", "Jitter"}, Default = 1, Text = "Spin Direction (Yaw)", Callback = function(v) Settings.SpinbotYaw = v end})
+SpinbotSection:AddSlider("SpinbotSpeed", {Text = "Spin Speed", Default = 10, Min = 1, Max = 100, Rounding = 0, Suffix = " °/f", Callback = function(v) Settings.SpinbotSpeed = v end})
 
-local TPWallSection = PlayerTab:CreateSection("Teleportation")
-UI.TPForwardEnabled = PlayerTab:CreateToggle({Name = "Enable Teleport Behind Walls", CurrentValue = false, Flag = "TPForwardEnabled", Callback = function(v) Settings.TPForwardEnabled = v end})
-UI.TPForwardKey = PlayerTab:CreateKeybind({
-    Name = "Teleport Forward Keybind", 
-    CurrentKeybind = "None", 
-    HoldToInteract = false, 
-    Flag = "TPKey", 
-    Callback = function() 
-        if Settings.PlayerMaster and Settings.TPForwardEnabled then
-            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -Settings.TPForwardStuds) end
-        end
+local JumpSection = Tabs.Player:AddRightGroupbox("Jumping")
+JumpSection:AddToggle("InfJumpEnabled", {Text = "Infinite Jump", Default = false, Callback = function(v) Settings.InfJumpEnabled = v end})
+
+local TPWallSection = Tabs.Player:AddRightGroupbox("Teleportation")
+TPWallSection:AddToggle("TPForwardEnabled", {Text = "Enable Teleport Behind Walls", Default = false, Callback = function(v) Settings.TPForwardEnabled = v end})
+TPWallSection:AddLabel("Teleport Keybind"):AddKeyPicker("TPForwardKey", {Default = 'None', SyncToggleState = false, Mode = 'Toggle', Text = "Teleport Forward Key"})
+Options.TPForwardKey:OnClick(function()
+    if Settings.PlayerMaster and Settings.TPForwardEnabled then
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, -Settings.TPForwardStuds) end
     end
-})
-PlayerTab:CreateButton({Name = "Delete Teleport Keybind", Callback = function() UI.TPForwardKey:Set("None") Settings.TPForwardKey = "None" end})
-UI.TPForwardStuds = PlayerTab:CreateSlider({Name = "Teleport Distance", Range = {1, 100}, Increment = 1, Suffix = " studs", CurrentValue = 5, Flag = "TPStuds", Callback = function(v) Settings.TPForwardStuds = v end})
+end)
+TPWallSection:AddSlider("TPForwardStuds", {Text = "Teleport Distance", Default = 5, Min = 1, Max = 100, Rounding = 0, Suffix = " studs", Callback = function(v) Settings.TPForwardStuds = v end})
 
-local StatsSection = PlayerTab:CreateSection("Value Multipliers")
-UI.StatsEnabled = PlayerTab:CreateToggle({Name = "Enable Multipliers", CurrentValue = false, Flag = "StatsEnabled", Callback = function(v) 
+local StatsSection = Tabs.Player:AddRightGroupbox("Value Multipliers")
+StatsSection:AddToggle("StatsEnabled", {Text = "Enable Multipliers", Default = false, Callback = function(v) 
     Settings.StatsEnabled = v 
     if not v then
         local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
         if hum then hum.WalkSpeed = DefaultWS; hum.JumpPower = DefaultJP end
     end
 end})
-UI.WalkSpeed = PlayerTab:CreateSlider({Name = "Walk Speed", Range = {0, 500}, Increment = 1, Suffix = " ws", CurrentValue = DefaultWS, Flag = "WalkSpeed", Callback = function(v) Settings.WalkSpeed = v end})
-UI.JumpPower = PlayerTab:CreateSlider({Name = "Jump Power", Range = {0, 500}, Increment = 1, Suffix = " jp", CurrentValue = DefaultJP, Flag = "JumpPower", Callback = function(v) Settings.JumpPower = v end})
-PlayerTab:CreateButton({Name = "Reset Values", Callback = function() 
+StatsSection:AddSlider("WalkSpeed", {Text = "Walk Speed", Default = DefaultWS, Min = 0, Max = 500, Rounding = 0, Suffix = " ws", Callback = function(v) Settings.WalkSpeed = v end})
+StatsSection:AddSlider("JumpPower", {Text = "Jump Power", Default = DefaultJP, Min = 0, Max = 500, Rounding = 0, Suffix = " jp", Callback = function(v) Settings.JumpPower = v end})
+StatsSection:AddButton({Text = "Reset Values", Func = function() 
     Settings.WalkSpeed = DefaultWS
     Settings.JumpPower = DefaultJP
-    UI.WalkSpeed:Set(DefaultWS)
-    UI.JumpPower:Set(DefaultJP)
+    Options.WalkSpeed:SetValue(DefaultWS)
+    Options.JumpPower:SetValue(DefaultJP)
 end})
 
-local BhopSection = PlayerTab:CreateSection("Bunny Hop")
-UI.BhopEnabled = PlayerTab:CreateToggle({Name = "Enable Bunny Hop", CurrentValue = false, Flag = "BhopEnabled", Callback = function(v) Settings.BhopEnabled = v end})
-UI.BhopSpeed = PlayerTab:CreateSlider({Name = "Bunny Hop Speed", Range = {1, 50}, Increment = 1, Suffix = " pwr", CurrentValue = 5, Flag = "BhopSpeed", Callback = function(v) Settings.BhopSpeed = v end})
+local BhopSection = Tabs.Player:AddRightGroupbox("Bunny Hop")
+BhopSection:AddToggle("BhopEnabled", {Text = "Enable Bunny Hop", Default = false, Callback = function(v) Settings.BhopEnabled = v end})
+BhopSection:AddSlider("BhopSpeed", {Text = "Bunny Hop Speed", Default = 5, Min = 1, Max = 50, Rounding = 0, Suffix = " pwr", Callback = function(v) Settings.BhopSpeed = v end})
 
 
 -- ==========================================
 -- [[ VISUALS TAB UI ]]
 -- ==========================================
 
-local GlobalSection = VisualsTab:CreateSection("Global Settings")
-UI.Master = VisualsTab:CreateToggle({Name = "Master Switch", CurrentValue = false, Flag = "MasterSwitch", Callback = function(v) Settings.Master = v end})
-UI.TeamCheck = VisualsTab:CreateToggle({Name = "Team Check", CurrentValue = false, Flag = "TeamCheck", Callback = function(v) Settings.TeamCheck = v end})
+local VisMasterGroup = Tabs.Visuals:AddLeftGroupbox("Global Settings")
+VisMasterGroup:AddToggle("Master", {Text = "Master Switch", Default = false, Callback = function(v) Settings.Master = v end})
+
+local VisSettingsGroup = Tabs.Visuals:AddLeftGroupbox("Visuals Settings")
+VisSettingsGroup:AddToggle("TeamCheck", {Text = "Team Check", Default = false, Callback = function(v) Settings.TeamCheck = v end})
 
 if game.PlaceId == 606849621 then
-    UI.IgnorePrisoners = VisualsTab:CreateToggle({Name = "Ignore Prisoners", CurrentValue = false, Flag = "IgnorePrisoners", Callback = function(v) Settings.IgnorePrisoners = v end}) 
+    VisSettingsGroup:AddToggle("IgnorePrisoners", {Text = "Ignore Prisoners", Default = false, Callback = function(v) Settings.IgnorePrisoners = v end}) 
 end
 
-UI.ESPOptimizer = VisualsTab:CreateSlider({Name = "ESP Optimizer", Range = {100, 10000}, Increment = 100, Suffix = " studs", CurrentValue = 1000, Flag = "ESPOptimizer", Callback = function(v) Settings.ESPOptimizer = v end}) 
-UI.ESPVisCheck = VisualsTab:CreateToggle({Name = "Visibility Check", CurrentValue = false, Flag = "ESPVisCheck", Callback = function(v) Settings.ESPVisCheck = v end})
+VisSettingsGroup:AddSlider("ESPOptimizer", {Text = "ESP Optimizer", Default = 1000, Min = 100, Max = 10000, Rounding = 0, Suffix = " studs", Callback = function(v) Settings.ESPOptimizer = v end}) 
+VisSettingsGroup:AddToggle("ESPVisCheck", {Text = "Visibility Check", Default = false, Callback = function(v) Settings.ESPVisCheck = v end})
 
-local ChamsSection = VisualsTab:CreateSection("Chams")
-UI.ChamsEnabled = VisualsTab:CreateToggle({Name = "Enable Chams", CurrentValue = false, Flag = "ChamsToggle", Callback = function(v) Settings.ChamsEnabled = v end})
-UI.ChamsColor = VisualsTab:CreateColorPicker({Name = "Chams Color", Color = Color3.fromRGB(255, 0, 0), Flag = "ChamsColor", Callback = function(v) Settings.ChamsColor = v end})
-UI.ChamsChroma = VisualsTab:CreateToggle({Name = "Chroma", CurrentValue = false, Flag = "ChamsChroma", Callback = function(v) Settings.ChamsChroma = v end})
-UI.ChamsTeamColor = VisualsTab:CreateToggle({Name = "Prefer Team Color", CurrentValue = false, Flag = "ChamsTeam", Callback = function(v) Settings.ChamsTeamColor = v end})
+local CameraSection = Tabs.Visuals:AddLeftGroupbox("Camera & Screen")
+CameraSection:AddToggle("CameraFOVEnabled", {
+    Text = "Enable FOV Changer", 
+    Default = false, 
+    Callback = function(v) 
+        Settings.CameraFOVEnabled = v 
+        if not v then Camera.FieldOfView = DefaultFOV end
+    end
+})
+CameraSection:AddSlider("CameraFOV", {Text = "Field of View", Default = DefaultFOV, Min = 10, Max = 120, Rounding = 0, Suffix = "°", Callback = function(v) Settings.CameraFOV = v end})
 
-local TracerSection = VisualsTab:CreateSection("Tracers")
-UI.TracersEnabled = VisualsTab:CreateToggle({Name = "Enable Tracers", CurrentValue = false, Flag = "TracerToggle", Callback = function(v) Settings.TracersEnabled = v end})
-UI.TracerOrigin = VisualsTab:CreateDropdown({Name = "Tracer Origin", Options = {"Top", "Center", "Bottom"}, CurrentOption = {"Top"}, Flag = "TracerLoc", Callback = function(v) Settings.TracerOrigin = v[1] end})
-UI.TracersColor = VisualsTab:CreateColorPicker({Name = "Tracer Color", Color = Color3.fromRGB(255, 255, 255), Flag = "TracerColor", Callback = function(v) Settings.TracersColor = v end})
-UI.TracersChroma = VisualsTab:CreateToggle({Name = "Chroma", CurrentValue = false, Flag = "TracerChroma", Callback = function(v) Settings.TracersChroma = v end})
-UI.TracerTeamColor = VisualsTab:CreateToggle({Name = "Prefer Team Color", CurrentValue = false, Flag = "TracerTeam", Callback = function(v) Settings.TracerTeamColor = v end})
+local ChamsSection = Tabs.Visuals:AddLeftGroupbox("Chams")
+ChamsSection:AddToggle("ChamsEnabled", {Text = "Enable Chams", Default = false, Callback = function(v) Settings.ChamsEnabled = v end})
+ChamsSection:AddLabel("Chams Color"):AddColorPicker("ChamsColor", {Default = Color3.fromRGB(255, 0, 0), Callback = function(v) Settings.ChamsColor = v end})
+ChamsSection:AddToggle("ChamsChroma", {Text = "Chroma", Default = false, Callback = function(v) Settings.ChamsChroma = v end})
+ChamsSection:AddToggle("ChamsTeamColor", {Text = "Prefer Team Color", Default = false, Callback = function(v) Settings.ChamsTeamColor = v end})
 
-local SkelSection = VisualsTab:CreateSection("Skeleton")
-UI.SkelEnabled = VisualsTab:CreateToggle({Name = "Enable Skeleton", CurrentValue = false, Flag = "SkelToggle", Callback = function(v) Settings.SkelEnabled = v end})
-UI.SkelThickness = VisualsTab:CreateSlider({Name = "Skeleton Thickness", Range = {1, 5}, Increment = 1, Suffix = "px", CurrentValue = 1, Flag = "SkelThick", Callback = function(v) Settings.SkelThickness = v end})
-UI.SkelColor = VisualsTab:CreateColorPicker({Name = "Skeleton Color", Color = Color3.fromRGB(255, 255, 255), Flag = "SkelColor", Callback = function(v) Settings.SkelColor = v end})
-UI.SkelChroma = VisualsTab:CreateToggle({Name = "Chroma", CurrentValue = false, Flag = "SkelChroma", Callback = function(v) Settings.SkelChroma = v end})
-UI.SkelTeamColor = VisualsTab:CreateToggle({Name = "Prefer Team Color", CurrentValue = false, Flag = "SkelTeam", Callback = function(v) Settings.SkelTeamColor = v end})
+local TracerSection = Tabs.Visuals:AddLeftGroupbox("Tracers")
+TracerSection:AddToggle("TracersEnabled", {Text = "Enable Tracers", Default = false, Callback = function(v) Settings.TracersEnabled = v end})
+TracerSection:AddDropdown("TracerOrigin", {Values = {"Top", "Center", "Bottom"}, Default = 1, Text = "Tracer Origin", Callback = function(v) Settings.TracerOrigin = v end})
+TracerSection:AddLabel("Tracer Color"):AddColorPicker("TracersColor", {Default = Color3.fromRGB(255, 255, 255), Callback = function(v) Settings.TracersColor = v end})
+TracerSection:AddToggle("TracersChroma", {Text = "Chroma", Default = false, Callback = function(v) Settings.TracersChroma = v end})
+TracerSection:AddToggle("TracerTeamColor", {Text = "Prefer Team Color", Default = false, Callback = function(v) Settings.TracerTeamColor = v end})
 
-local NameSection = VisualsTab:CreateSection("Names")
-UI.NamesEnabled = VisualsTab:CreateToggle({Name = "Enable Names", CurrentValue = false, Flag = "NameToggle", Callback = function(v) Settings.NamesEnabled = v end})
-UI.UseDisplayNames = VisualsTab:CreateToggle({Name = "Prefer Display Names", CurrentValue = false, Flag = "DispNameToggle", Callback = function(v) Settings.UseDisplayNames = v end})
-UI.NamesColor = VisualsTab:CreateColorPicker({Name = "Name Color", Color = Color3.fromRGB(255, 255, 255), Flag = "NameColor", Callback = function(v) Settings.NamesColor = v end})
-UI.NamesChroma = VisualsTab:CreateToggle({Name = "Chroma", CurrentValue = false, Flag = "NameChroma", Callback = function(v) Settings.NamesChroma = v end})
-UI.NameTeamColor = VisualsTab:CreateToggle({Name = "Prefer Team Color", CurrentValue = false, Flag = "NameTeam", Callback = function(v) Settings.NameTeamColor = v end})
+local SkelSection = Tabs.Visuals:AddRightGroupbox("Skeleton")
+SkelSection:AddToggle("SkelEnabled", {Text = "Enable Skeleton", Default = false, Callback = function(v) Settings.SkelEnabled = v end})
+SkelSection:AddSlider("SkelThickness", {Text = "Skeleton Thickness", Default = 1, Min = 1, Max = 5, Rounding = 0, Suffix = "px", Callback = function(v) Settings.SkelThickness = v end})
+SkelSection:AddLabel("Skeleton Color"):AddColorPicker("SkelColor", {Default = Color3.fromRGB(255, 255, 255), Callback = function(v) Settings.SkelColor = v end})
+SkelSection:AddToggle("SkelChroma", {Text = "Chroma", Default = false, Callback = function(v) Settings.SkelChroma = v end})
+SkelSection:AddToggle("SkelTeamColor", {Text = "Prefer Team Color", Default = false, Callback = function(v) Settings.SkelTeamColor = v end})
 
-local BoxSection = VisualsTab:CreateSection("Boxes")
-UI.BoxEnabled = VisualsTab:CreateToggle({Name = "Enable Boxes", CurrentValue = false, Flag = "BoxToggle", Callback = function(v) Settings.BoxEnabled = v end})
-UI.BoxType = VisualsTab:CreateDropdown({Name = "Box Type", Options = {"2D Box", "3D Box"}, CurrentOption = {"2D Box"}, Flag = "BoxType", Callback = function(v) Settings.BoxType = v[1] end})
-UI.BoxThickness = VisualsTab:CreateSlider({Name = "Box Thickness", Range = {1, 3}, Increment = 1, Suffix = "px", CurrentValue = 1, Flag = "BoxThick", Callback = function(v) Settings.BoxThickness = v end})
-UI.BoxColor = VisualsTab:CreateColorPicker({Name = "Box Color", Color = Color3.fromRGB(255, 255, 255), Flag = "BoxColor", Callback = function(v) Settings.BoxColor = v end})
-UI.BoxChroma = VisualsTab:CreateToggle({Name = "Chroma", CurrentValue = false, Flag = "BoxChroma", Callback = function(v) Settings.BoxChroma = v end})
-UI.BoxTeamColor = VisualsTab:CreateToggle({Name = "Prefer Team Color", CurrentValue = false, Flag = "BoxTeam", Callback = function(v) Settings.BoxTeamColor = v end})
+local NameSection = Tabs.Visuals:AddRightGroupbox("Names")
+NameSection:AddToggle("NamesEnabled", {Text = "Enable Names", Default = false, Callback = function(v) Settings.NamesEnabled = v end})
+NameSection:AddToggle("UseDisplayNames", {Text = "Prefer Display Names", Default = false, Callback = function(v) Settings.UseDisplayNames = v end})
+NameSection:AddLabel("Name Color"):AddColorPicker("NamesColor", {Default = Color3.fromRGB(255, 255, 255), Callback = function(v) Settings.NamesColor = v end})
+NameSection:AddToggle("NamesChroma", {Text = "Chroma", Default = false, Callback = function(v) Settings.NamesChroma = v end})
+NameSection:AddToggle("NameTeamColor", {Text = "Prefer Team Color", Default = false, Callback = function(v) Settings.NameTeamColor = v end})
 
-local TPSection = VisualsTab:CreateSection("Third Person")
-UI.ThirdPerson = VisualsTab:CreateToggle({
-    Name = "Third Person", 
-    CurrentValue = false, 
-    Flag = "CamThirdPerson", 
+local BoxSection = Tabs.Visuals:AddRightGroupbox("Boxes")
+BoxSection:AddToggle("BoxEnabled", {Text = "Enable Boxes", Default = false, Callback = function(v) Settings.BoxEnabled = v end})
+BoxSection:AddDropdown("BoxType", {Values = {"2D Box", "3D Box"}, Default = 1, Text = "Box Type", Callback = function(v) Settings.BoxType = v end})
+BoxSection:AddSlider("BoxThickness", {Text = "Box Thickness", Default = 1, Min = 1, Max = 3, Rounding = 0, Suffix = "px", Callback = function(v) Settings.BoxThickness = v end})
+BoxSection:AddLabel("Box Color"):AddColorPicker("BoxColor", {Default = Color3.fromRGB(255, 255, 255), Callback = function(v) Settings.BoxColor = v end})
+BoxSection:AddToggle("BoxChroma", {Text = "Chroma", Default = false, Callback = function(v) Settings.BoxChroma = v end})
+BoxSection:AddToggle("BoxTeamColor", {Text = "Prefer Team Color", Default = false, Callback = function(v) Settings.BoxTeamColor = v end})
+
+local TPSection = Tabs.Visuals:AddRightGroupbox("Third Person")
+TPSection:AddToggle("ThirdPerson", {
+    Text = "Third Person", 
+    Default = false, 
     Callback = function(v) 
         if v and not TPActive then
             OriginalCamMode = LocalPlayer.CameraMode
@@ -301,300 +313,128 @@ UI.ThirdPerson = VisualsTab:CreateToggle({
         Settings.ThirdPerson = v 
     end
 })
-UI.ThirdPersonDist = VisualsTab:CreateSlider({
-    Name = "Third Person Distance", 
-    Range = {5, 100}, 
-    Increment = 1, 
-    Suffix = " studs", 
-    CurrentValue = 15,
-    Flag = "CamTPDist", 
-    Callback = function(v) Settings.ThirdPersonDist = v end
-})
+TPSection:AddSlider("ThirdPersonDist", {Text = "Third Person Distance", Default = 15, Min = 5, Max = 100, Rounding = 0, Suffix = " studs", Callback = function(v) Settings.ThirdPersonDist = v end})
 
 
 -- ==========================================
 -- [[ AIMBOT TAB UI ]]
 -- ==========================================
 
-local AimMasterSection = AimbotTab:CreateSection("Aimbot Master")
-UI.AimbotMaster = AimbotTab:CreateToggle({Name = "Enable Aimbot", CurrentValue = false, Flag = "AimMaster", Callback = function(v) Settings.AimbotMaster = v end})
+local AimMasterGroup = Tabs.Aimbot:AddLeftGroupbox("Global Settings")
+AimMasterGroup:AddToggle("AimMaster", {Text = "Master Switch", Default = false, Callback = function(v) Settings.AimMaster = v end})
 
-UI.AimbotMode = AimbotTab:CreateDropdown({
-    Name = "Aimbot Mode",
-    Options = {"Hold", "Toggle", "Always On"},
-    CurrentOption = {"Hold"},
-    Flag = "AimMode",
-    Callback = function(v) Settings.AimbotMode = v[1] end
-})
+local AimSettingsGroup = Tabs.Aimbot:AddLeftGroupbox("Aimbot Settings")
+AimSettingsGroup:AddToggle("AimbotEnabled", {Text = "Enable Aimbot", Default = false, Callback = function(v) Settings.AimbotEnabled = v end})
+AimSettingsGroup:AddDropdown("AimbotMode", {Values = {"Hold", "Toggle", "Always On"}, Default = 1, Text = "Aimbot Mode", Callback = function(v) Settings.AimbotMode = v end})
+AimSettingsGroup:AddDropdown("AimbotMouseBind", {Values = {"None", "Left Click", "Right Click", "Middle Click"}, Default = 3, Text = "Mouse Bind", Callback = function(v) Settings.AimbotMouseBind = v end})
+AimSettingsGroup:AddLabel("Keyboard Bind"):AddKeyPicker("AimbotKey", {Default = 'None', SyncToggleState = false, Mode = 'Hold', Text = "Keyboard Bind"})
 
-UI.AimbotMouseBind = AimbotTab:CreateDropdown({
-    Name = "Mouse Bind",
-    Options = {"None", "Left Click", "Right Click", "Middle Click"},
-    CurrentOption = {"Right Click"},
-    Flag = "AimMouseBind",
-    Callback = function(v) Settings.AimbotMouseBind = v[1] end
-})
-
-UI.AimbotKey = AimbotTab:CreateKeybind({
-   Name = "Keyboard Bind",
-   CurrentKeybind = "None", 
-   HoldToInteract = true,
-   Flag = "AimKeybind1", 
-   Callback = function(Keybind) Settings.AimbotHolding = Keybind end,
-})
-
-local AimTargetingSection = AimbotTab:CreateSection("Targeting & Checks")
-UI.AimbotLockPart = AimbotTab:CreateDropdown({Name = "Lock Part", Options = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}, CurrentOption = {"Head"}, Flag = "AimPart", Callback = function(v) Settings.AimbotLockPart = v[1] end})
-UI.AimbotSmoothness = AimbotTab:CreateSlider({Name = "Smoothing", Range = {0, 20}, Increment = 1, Suffix = "x", CurrentValue = 0, Flag = "AimSmooth", Callback = function(v) Settings.AimbotSmoothness = v end})
-UI.AimbotMaxDistance = AimbotTab:CreateSlider({Name = "Lock Range", Range = {100, 10000}, Increment = 100, Suffix = " studs", CurrentValue = 1000, Flag = "AimMaxDist", Callback = function(v) Settings.AimbotMaxDistance = v end}) 
-UI.AimbotVisCheck = AimbotTab:CreateToggle({Name = "Visibility Check", CurrentValue = false, Flag = "AimVisCheck", Callback = function(v) Settings.AimbotVisCheck = v end}) 
-UI.AimbotSnapBack = AimbotTab:CreateToggle({Name = "Snap Back Camera", CurrentValue = false, Flag = "AimSnapBack", Callback = function(v) Settings.AimbotSnapBack = v end})
-UI.AimbotTeamCheck = AimbotTab:CreateToggle({Name = "Team Check", CurrentValue = false, Flag = "AimTeam", Callback = function(v) Settings.AimbotTeamCheck = v end})
-
-UI.AimIgnoreForcefield = AimbotTab:CreateToggle({Name = "Ignore Forcefields", CurrentValue = false, Flag = "AimIgnoreFF", Callback = function(v) Settings.AimIgnoreForcefield = v end})
+local AimTargetingSection = Tabs.Aimbot:AddLeftGroupbox("Targeting & Checks")
+AimTargetingSection:AddDropdown("AimbotLockPart", {Values = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}, Default = 1, Text = "Lock Part", Callback = function(v) Settings.AimbotLockPart = v end})
+AimTargetingSection:AddSlider("AimbotSmoothness", {Text = "Smoothing", Default = 0, Min = 0, Max = 20, Rounding = 0, Suffix = "x", Callback = function(v) Settings.AimbotSmoothness = v end})
+AimTargetingSection:AddSlider("AimbotMaxDistance", {Text = "Lock Range", Default = 1000, Min = 100, Max = 10000, Rounding = 0, Suffix = " studs", Callback = function(v) Settings.AimbotMaxDistance = v end}) 
+AimTargetingSection:AddToggle("AimbotVisCheck", {Text = "Visibility Check", Default = false, Callback = function(v) Settings.AimbotVisCheck = v end}) 
+AimTargetingSection:AddToggle("AimbotSnapBack", {Text = "Snap Back Camera", Default = false, Callback = function(v) Settings.AimbotSnapBack = v end})
+AimTargetingSection:AddToggle("AimbotTeamCheck", {Text = "Team Check", Default = false, Callback = function(v) Settings.AimbotTeamCheck = v end})
+AimTargetingSection:AddToggle("AimIgnoreForcefield", {Text = "Ignore Forcefields", Default = false, Callback = function(v) Settings.AimIgnoreForcefield = v end})
 
 if game.PlaceId == 606849621 then
-    UI.AimIgnorePrisoners = AimbotTab:CreateToggle({Name = "Ignore Prisoners", CurrentValue = false, Flag = "AimIgnorePrisoner", Callback = function(v) Settings.AimIgnorePrisoners = v end})
+    AimTargetingSection:AddToggle("AimIgnorePrisoners", {Text = "Ignore Prisoners", Default = false, Callback = function(v) Settings.AimIgnorePrisoners = v end})
 end
 
-local AimAutomationSection = AimbotTab:CreateSection("Automation")
-UI.AimbotAutoShoot = AimbotTab:CreateToggle({Name = "Auto Shoot", CurrentValue = false, Flag = "AimAutoShoot", Callback = function(v) Settings.AimbotAutoShoot = v end}) 
-UI.AimBlatantMode = AimbotTab:CreateToggle({Name = "Blatant Auto Shoot", CurrentValue = false, Flag = "AimBlatant", Callback = function(v) Settings.AimBlatantMode = v end})
-UI.AimbotAutoStop = AimbotTab:CreateToggle({Name = "Auto Stop", CurrentValue = false, Flag = "AimAutoStop", Callback = function(v) Settings.AimbotAutoStop = v end})
-UI.AimAutoShootMethod = AimbotTab:CreateDropdown({
-    Name = "Auto Shoot Method",
-    Options = {"VIM", "Hardware", "Hybrid"},
-    CurrentOption = {"Hardware"},
-    Flag = "AimAutoShootMethod",
-    Callback = function(v) Settings.AimAutoShootMethod = v[1] end
-})
-UI.AimAutoShootCPS = AimbotTab:CreateSlider({
-    Name = "Auto Shoot CPS", 
-    Range = {1, 30}, 
-    Increment = 1, 
-    Suffix = " clicks/s", 
-    CurrentValue = 10, 
-    Flag = "AimAutoShootCPS", 
-    Callback = function(v) Settings.AimbotAutoShootCPS = v end
-}) 
-UI.AimbotAutoShootDelay = AimbotTab:CreateSlider({
-    Name = "Auto Shoot Delay", 
-    Range = {0, 500}, 
-    Increment = 10, 
-    Suffix = " ms", 
-    CurrentValue = 0, 
-    Flag = "AimAutoShootDelay", 
-    Callback = function(v) Settings.AimbotAutoShootDelay = v end
-})
+local FOVSection = Tabs.Aimbot:AddLeftGroupbox("FOV Ring")
+FOVSection:AddToggle("Aimbot360FOV", {Text = "360° FOV", Default = false, Callback = function(v) Settings.Aimbot360FOV = v end})
+FOVSection:AddToggle("AimbotDrawFOV", {Text = "Draw FOV", Default = false, Callback = function(v) Settings.AimbotDrawFOV = v end})
+FOVSection:AddSlider("AimbotFOVRadius", {Text = "FOV Radius", Default = 100, Min = 10, Max = 800, Rounding = 0, Suffix = "px", Callback = function(v) Settings.AimbotFOVRadius = v end})
+FOVSection:AddLabel("FOV Color"):AddColorPicker("AimbotFOVColor", {Default = Color3.fromRGB(255, 255, 255), Callback = function(v) Settings.AimbotFOVColor = v end})
+FOVSection:AddToggle("AimbotFOVChroma", {Text = "Chroma FOV", Default = false, Callback = function(v) Settings.AimbotFOVChroma = v end})
 
-local AutoWallSection = AimbotTab:CreateSection("Auto Wall")
-UI.AimbotWallbang = AimbotTab:CreateToggle({Name = "Auto Wall", CurrentValue = false, Flag = "AimWallbang", Callback = function(v) Settings.AimbotWallbang = v end}) 
-UI.AimbotWallThickness = AimbotTab:CreateSlider({Name = "Auto Wall Sensitivity", Range = {0.1, 15.0}, Increment = 0.1, Suffix = " studs", CurrentValue = 2.0, Flag = "AimWallThick", Callback = function(v) Settings.AimbotWallThickness = v end})
+local TriggerbotSection = Tabs.Aimbot:AddRightGroupbox("Triggerbot")
+TriggerbotSection:AddToggle("TriggerbotEnabled", {Text = "Enable Triggerbot", Default = false, Callback = function(v) 
+    if v and Settings.AimbotAutoShoot then
+        Toggles.AimbotAutoShoot:SetValue(false)
+    end
+    Settings.TriggerbotEnabled = v 
+end})
+TriggerbotSection:AddToggle("TriggerbotVisCheck", {Text = "Visibility Check", Default = false, Callback = function(v) Settings.TriggerbotVisCheck = v end})
+TriggerbotSection:AddToggle("TriggerbotTeamCheck", {Text = "Team Check", Default = false, Callback = function(v) Settings.TriggerbotTeamCheck = v end})
+TriggerbotSection:AddDropdown("TriggerbotType", {Values = {"Crosshair", "Cursor"}, Default = 1, Text = "Trigger Type", Callback = function(v) Settings.TriggerbotType = v end})
+TriggerbotSection:AddSlider("TriggerbotDelay", {Text = "Trigger Delay", Default = 0, Min = 0, Max = 500, Rounding = 0, Suffix = " ms", Callback = function(v) Settings.TriggerbotDelay = v end})
 
-local HitTraceSection = AimbotTab:CreateSection("Hit Traces")
-UI.AimHitTraces = AimbotTab:CreateToggle({Name = "Enable Hit Traces", CurrentValue = false, Flag = "AimHitTraces", Callback = function(v) Settings.AimHitTraces = v end})
-UI.AimTraceColor = AimbotTab:CreateColorPicker({Name = "Hit Trace Color", Color = Color3.fromRGB(255, 0, 0), Flag = "AimTraceColor", Callback = function(v) Settings.AimTraceColor = v end})
-UI.AimTraceChroma = AimbotTab:CreateToggle({Name = "Hit Trace Chroma", CurrentValue = false, Flag = "AimTraceChroma", Callback = function(v) Settings.AimTraceChroma = v end})
+local AimAutomationSection = Tabs.Aimbot:AddRightGroupbox("Automation")
+AimAutomationSection:AddToggle("AimbotAutoShoot", {Text = "Auto Shoot", Default = false, Callback = function(v) 
+    if v and Settings.TriggerbotEnabled then
+        Toggles.TriggerbotEnabled:SetValue(false)
+    end
+    Settings.AimbotAutoShoot = v 
+end}) 
+AimAutomationSection:AddToggle("AimBlatantMode", {Text = "Blatant Auto Shoot", Default = false, Callback = function(v) Settings.AimBlatantMode = v end})
+AimAutomationSection:AddToggle("AimbotAutoStop", {Text = "Auto Stop", Default = false, Callback = function(v) Settings.AimbotAutoStop = v end})
+AimAutomationSection:AddDropdown("AimAutoShootMethod", {Values = {"VIM", "Hardware", "Hybrid"}, Default = 2, Text = "Auto Shoot Method", Callback = function(v) Settings.AimAutoShootMethod = v end})
+AimAutomationSection:AddSlider("AimbotAutoShootCPS", {Text = "Auto Shoot CPS", Default = 10, Min = 1, Max = 30, Rounding = 0, Suffix = " clicks/s", Callback = function(v) Settings.AimbotAutoShootCPS = v end}) 
+AimAutomationSection:AddSlider("AimbotAutoShootDelay", {Text = "Auto Shoot Delay", Default = 0, Min = 0, Max = 500, Rounding = 0, Suffix = " ms", Callback = function(v) Settings.AimbotAutoShootDelay = v end})
 
-local FOVSection = AimbotTab:CreateSection("FOV Ring")
-UI.Aimbot360FOV = AimbotTab:CreateToggle({Name = "360° FOV", CurrentValue = false, Flag = "Aim360FOV", Callback = function(v) Settings.Aimbot360FOV = v end})
-UI.AimbotDrawFOV = AimbotTab:CreateToggle({Name = "Draw FOV", CurrentValue = false, Flag = "AimDrawFOV", Callback = function(v) Settings.AimbotDrawFOV = v end})
-UI.AimbotFOVRadius = AimbotTab:CreateSlider({Name = "FOV Radius", Range = {10, 800}, Increment = 10, Suffix = "px", CurrentValue = 100, Flag = "AimFOVRad", Callback = function(v) Settings.AimbotFOVRadius = v end})
-UI.AimbotFOVColor = AimbotTab:CreateColorPicker({Name = "FOV Color", Color = Color3.fromRGB(255, 255, 255), Flag = "AimFOVCol", Callback = function(v) Settings.AimbotFOVColor = v end})
-UI.AimbotFOVChroma = AimbotTab:CreateToggle({Name = "Chroma FOV", CurrentValue = false, Flag = "AimFOVChroma", Callback = function(v) Settings.AimbotFOVChroma = v end})
+local AutoWallSection = Tabs.Aimbot:AddRightGroupbox("Auto Wall")
+AutoWallSection:AddToggle("AimbotWallbang", {Text = "Auto Wall", Default = false, Callback = function(v) Settings.AimbotWallbang = v end}) 
+AutoWallSection:AddSlider("AimbotWallThickness", {Text = "Auto Wall Sensitivity", Default = 2.0, Min = 0.1, Max = 15.0, Rounding = 1, Suffix = " studs", Callback = function(v) Settings.AimbotWallThickness = v end})
 
-local PredSection = AimbotTab:CreateSection("Prediction")
-UI.AimbotPrediction = AimbotTab:CreateToggle({Name = "Enable Prediction", CurrentValue = false, Flag = "AimPredToggle", Callback = function(v) Settings.AimbotPrediction = v end})
-UI.AimbotPredX = AimbotTab:CreateSlider({Name = "Prediction X", Range = {0, 10}, Increment = 1, Suffix = " offset", CurrentValue = 0, Flag = "AimPredX", Callback = function(v) Settings.AimbotPredX = v end})
-UI.AimbotPredY = AimbotTab:CreateSlider({Name = "Prediction Y", Range = {0, 10}, Increment = 1, Suffix = " offset", CurrentValue = 0, Flag = "AimPredY", Callback = function(v) Settings.AimbotPredY = v end})
+local HitTraceSection = Tabs.Aimbot:AddRightGroupbox("Hit Traces")
+HitTraceSection:AddToggle("AimHitTraces", {Text = "Enable Hit Traces", Default = false, Callback = function(v) Settings.AimHitTraces = v end})
+HitTraceSection:AddLabel("Hit Trace Color"):AddColorPicker("AimTraceColor", {Default = Color3.fromRGB(255, 0, 0), Callback = function(v) Settings.AimTraceColor = v end})
+HitTraceSection:AddToggle("AimTraceChroma", {Text = "Hit Trace Chroma", Default = false, Callback = function(v) Settings.AimTraceChroma = v end})
+
+local PredSection = Tabs.Aimbot:AddRightGroupbox("Prediction")
+PredSection:AddToggle("AimbotPrediction", {Text = "Enable Prediction", Default = false, Callback = function(v) Settings.AimbotPrediction = v end})
+PredSection:AddSlider("AimbotPredX", {Text = "Prediction X", Default = 0, Min = 0, Max = 10, Rounding = 0, Suffix = " offset", Callback = function(v) Settings.AimbotPredX = v end})
+PredSection:AddSlider("AimbotPredY", {Text = "Prediction Y", Default = 0, Min = 0, Max = 10, Rounding = 0, Suffix = " offset", Callback = function(v) Settings.AimbotPredY = v end})
 
 
 -- ==========================================
 -- [[ MISCELLANEOUS TAB UI ]]
 -- ==========================================
 
-local SpinbotSection = MiscTab:CreateSection("Spinbot")
-UI.SpinbotEnabled = MiscTab:CreateToggle({
-    Name = "Enable Spinbot", 
-    CurrentValue = false, 
-    Flag = "SpinMaster", 
-    Callback = function(v) Settings.SpinbotEnabled = v end
-})
-UI.SpinbotPitch = MiscTab:CreateDropdown({
-    Name = "Face Direction (Pitch)",
-    Options = {"None", "Sky", "Ground"},
-    CurrentOption = {"None"},
-    Flag = "SpinPitch",
-    Callback = function(v) Settings.SpinbotPitch = v[1] end
-})
-UI.SpinbotYaw = MiscTab:CreateDropdown({
-    Name = "Spin Direction (Yaw)",
-    Options = {"Clockwise", "Counter-Clockwise", "Jitter"},
-    CurrentOption = {"Clockwise"},
-    Flag = "SpinYaw",
-    Callback = function(v) Settings.SpinbotYaw = v[1] end
-})
-UI.SpinbotSpeed = MiscTab:CreateSlider({
-    Name = "Spin Speed", 
-    Range = {1, 100}, 
-    Increment = 1, 
-    Suffix = " °/f", 
-    CurrentValue = 10, 
-    Flag = "SpinSpeed", 
-    Callback = function(v) Settings.SpinbotSpeed = v end
-})
-
-local EnvSection = MiscTab:CreateSection("Environment")
-UI.EnvColorEnabled = MiscTab:CreateToggle({
-    Name = "Enable Custom Environment Color", 
-    CurrentValue = false, 
-    Flag = "EnvColorToggle", 
-    Callback = function(v) Settings.EnvColorEnabled = v end
-})
-UI.EnvColor = MiscTab:CreateColorPicker({
-    Name = "Environment Color", 
-    Color = Color3.fromRGB(255, 255, 255), 
-    Flag = "EnvColor", 
-    Callback = function(v) Settings.EnvColor = v end
-})
-UI.EnvChroma = MiscTab:CreateToggle({
-    Name = "Chroma", 
-    CurrentValue = false, 
-    Flag = "EnvChroma", 
-    Callback = function(v) Settings.EnvChroma = v end
-})
+local EnvSection = Tabs.Misc:AddLeftGroupbox("Environment")
+EnvSection:AddToggle("EnvColorEnabled", {Text = "Enable Custom Environment Color", Default = false, Callback = function(v) Settings.EnvColorEnabled = v end})
+EnvSection:AddLabel("Environment Color"):AddColorPicker("EnvColor", {Default = Color3.fromRGB(255, 255, 255), Callback = function(v) Settings.EnvColor = v end})
+EnvSection:AddToggle("EnvChroma", {Text = "Chroma", Default = false, Callback = function(v) Settings.EnvChroma = v end})
 
 -- ==========================================
 -- [[ SETTINGS & CONFIG TAB UI ]]
 -- ==========================================
 
-local CameraSection = SettingsTab:CreateSection("Camera")
-UI.CameraFOVEnabled = SettingsTab:CreateToggle({
-    Name = "Enable FOV Changer", 
-    CurrentValue = false, 
-    Flag = "CamFOVEnable", 
+local WatermarkSection = Tabs.Settings:AddLeftGroupbox("Watermark")
+WatermarkSection:AddToggle("WatermarkEnabled", {
+    Text = "Enable Watermark", 
+    Default = false, 
     Callback = function(v) 
-        Settings.CameraFOVEnabled = v 
-        if not v then Camera.FieldOfView = DefaultFOV end
+        Settings.WatermarkEnabled = v 
+        Library:SetWatermarkVisibility(v)
     end
 })
-UI.CameraFOV = SettingsTab:CreateSlider({
-    Name = "Field of View", 
-    Range = {10, 120}, 
-    Increment = 1, 
-    Suffix = "°", 
-    CurrentValue = DefaultFOV,
-    Flag = "CamFOV", 
-    Callback = function(v) Settings.CameraFOV = v end
-})
 
-local WatermarkSection = SettingsTab:CreateSection("Watermark")
-UI.WatermarkEnabled = SettingsTab:CreateToggle({
-    Name = "Enable Watermark",
-    CurrentValue = false,
-    Flag = "WatermarkEnable",
-    Callback = function(v) Settings.WatermarkEnabled = v end
-})
-UI.WatermarkCorner = SettingsTab:CreateDropdown({
-    Name = "Position Corner",
-    Options = {"Top Left", "Top Right", "Bottom Left", "Bottom Right"},
-    CurrentOption = {"Top Left"},
-    Flag = "WatermarkLoc",
-    Callback = function(v) Settings.WatermarkCorner = v[1] end
-})
+-- Library/Menu System
+local MenuGroup = Tabs.Settings:AddLeftGroupbox('Menu')
+MenuGroup:AddButton('Unload Menu', function() Library:Unload() end)
+MenuGroup:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'K', NoUI = true, Text = 'Menu keybind' })
 
-local ConfigFolder = "Project_iWare_Configs"
-if not isfolder(ConfigFolder) then makefolder(ConfigFolder) end
+Library.ToggleKeybind = Options.MenuKeybind
 
-local function GetConfigs()
-    local configs = {""}
-    if isfolder(ConfigFolder) then
-        for _, file in pairs(listfiles(ConfigFolder)) do
-            if file:match("%.json$") then table.insert(configs, file:match("([^/\\]+)%.json$")) end
-        end
-    end
-    return #configs > 1 and configs or {"", "No Configs Found"}
+-- Setup LinoriaLib's Native Theme & Save Managers
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
+
+ThemeManager:SetFolder('peekachu')
+SaveManager:SetFolder('peekachu/configs')
+
+SaveManager:BuildConfigSection(Tabs.Settings)
+ThemeManager:ApplyToTab(Tabs.Settings)
+
+-- Apply default accent color (Yellow) after loading the themes
+if Options.AccentColor then
+    Options.AccentColor:SetValueRGB(Color3.fromRGB(255, 255, 0))
 end
-
-local ConfigSection = SettingsTab:CreateSection("Configuration Manager")
-local CurrentConfigName = ""
-local ConfigDropdown 
-
-SettingsTab:CreateInput({
-    Name = "Config Name",
-    CurrentValue = "",
-    PlaceholderText = "Enter config name...",
-    RemoveTextAfterFocusLost = false,
-    Flag = "ConfigNameInput",
-    Callback = function(Text) CurrentConfigName = Text end,
-})
-
-ConfigDropdown = SettingsTab:CreateDropdown({
-    Name = "Available Configs", Options = GetConfigs(), CurrentOption = {""}, Flag = "ConfigDropdownList",
-    Callback = function(v) CurrentConfigName = v[1] end,
-})
-
-SettingsTab:CreateButton({
-    Name = "Save Config",
-    Callback = function()
-        if CurrentConfigName ~= "" and CurrentConfigName ~= "No Configs Found" then
-            local saveTable = {}
-            for k, v in pairs(Settings) do
-                if typeof(v) == "Color3" then saveTable[k] = {Type = "Color3", R = v.R, G = v.G, B = v.B} else saveTable[k] = v end
-            end
-            writefile(ConfigFolder .. "/" .. CurrentConfigName .. ".json", HttpService:JSONEncode(saveTable))
-            ConfigDropdown:Refresh(GetConfigs())
-            Rayfield:Notify({Title = "Vault", Content = "Config Saved: " .. CurrentConfigName, Duration = 3})
-        else Rayfield:Notify({Title = "Vault Error", Content = "Please enter a valid config name.", Duration = 3}) end
-    end,
-})
-
-SettingsTab:CreateButton({
-    Name = "Load Config",
-    Callback = function()
-        if CurrentConfigName ~= "" and CurrentConfigName ~= "No Configs Found" then
-            local path = ConfigFolder .. "/" .. CurrentConfigName .. ".json"
-            if isfile(path) then
-                local decoded = HttpService:JSONDecode(readfile(path))
-                
-                for k, v in pairs(decoded) do
-                    if type(v) == "table" and v.Type == "Color3" then 
-                        Settings[k] = Color3.new(v.R, v.G, v.B) 
-                    else 
-                        Settings[k] = v 
-                    end
-                    
-                    if UI[k] then
-                        if k == "TracerOrigin" or k == "BoxType" or k == "AimbotLockPart" or k == "AimbotMouseBind" or k == "AimAutoShootMethod" or k == "AimbotMode" or k == "SpinbotPitch" or k == "SpinbotYaw" or k == "FlyMode" or k == "NoclipMode" or k == "WatermarkCorner" then
-                            UI[k]:Set({Settings[k]})
-                        elseif k == "AimBlatantMode" then
-                            UI.AimBlatantMode:Set(Settings[k])
-                        else
-                            UI[k]:Set(Settings[k])
-                        end
-                    end
-                end
-                Rayfield:Notify({Title = "Vault", Content = "Config Loaded: " .. CurrentConfigName, Duration = 3})
-            else Rayfield:Notify({Title = "Vault Error", Content = "Config file not found.", Duration = 3}) end
-        end
-    end,
-})
-
-SettingsTab:CreateButton({
-    Name = "Delete Config",
-    Callback = function()
-        if CurrentConfigName ~= "" and CurrentConfigName ~= "No Configs Found" then
-            local path = ConfigFolder .. "/" .. CurrentConfigName .. ".json"
-            if isfile(path) then
-                delfile(path) ConfigDropdown:Refresh(GetConfigs())
-                Rayfield:Notify({Title = "Vault", Content = "Config Deleted: " .. CurrentConfigName, Duration = 3})
-            end
-        end
-    end,
-})
-
-SettingsTab:CreateButton({Name = "Refresh Configs", Callback = function() ConfigDropdown:Refresh(GetConfigs()) end})
-
 
 -- ==========================================
 -- [[ CORE LOGIC HANDLERS ]]
@@ -602,26 +442,6 @@ SettingsTab:CreateButton({Name = "Refresh Configs", Callback = function() Config
 
 local ESP_Cache = {} 
 local FOV_Circle = Drawing.new("Circle") 
-
--- [[ WATERMARK OBJECTS ]] --
-local Watermark_Main = Drawing.new("Square")
-Watermark_Main.Thickness = 1
-Watermark_Main.Filled = true
-Watermark_Main.Color = Color3.fromRGB(20, 20, 20)
-Watermark_Main.Transparency = 0.8
-
-local Watermark_Border = Drawing.new("Square")
-Watermark_Border.Thickness = 1
-Watermark_Border.Filled = false
-Watermark_Border.Color = Color3.fromRGB(255, 165, 0) -- Amber Glow
-Watermark_Border.Transparency = 1
-
-local Watermark_Text = Drawing.new("Text")
-Watermark_Text.Size = 14
-Watermark_Text.Outline = false
-Watermark_Text.Center = false
-Watermark_Text.Color = Color3.new(1, 1, 1)
-Watermark_Text.Font = 2
 
 local CurrentLockedTarget = nil 
 local LastTraceTime = 0 
@@ -636,6 +456,9 @@ local IsWaitingToShoot = false
 local PreviousTriggerState = false
 local AimbotToggled = false
 local SpinbotAngle = 0
+
+local LastTriggerTime = 0
+local IsWaitingToTrigger = false
 
 local FPSTick = tick()
 local FPSFrameCount = 0
@@ -708,6 +531,23 @@ local function hideESP(player)
     end
 end
 
+-- Safely retrieves and caches character parts without spamming FindFirstChild
+local function getCachedPart(player, partName)
+    local cache = ESP_Cache[player]
+    if not cache or not player.Character then return nil end
+    
+    if cache.Character ~= player.Character then
+        cache.Character = player.Character
+        cache.Parts = {} 
+    end
+    
+    if cache.Parts[partName] then return cache.Parts[partName] end
+    
+    local part = player.Character:FindFirstChild(partName)
+    if part then cache.Parts[partName] = part end
+    return part
+end
+
 local function getRainbowColor()
     return Color3.fromHSV(tick() % 5 / 5, 1, 1) 
 end
@@ -742,6 +582,49 @@ local function handleEnvironment()
 end
 
 -- ==========================================
+-- [[ SMART RAYCASTING ENGINE ]]
+-- ==========================================
+
+-- We pool RaycastParams to strictly avoid massive GC lag spikes caused by re-allocating them in a loop
+local AdvancedRayParams = RaycastParams.new()
+local ReusableFilterList = {} 
+
+local function advancedRaycast(origin, direction, rayParams)
+    table.clear(ReusableFilterList)
+    if rayParams.FilterDescendantsInstances then
+        for i = 1, #rayParams.FilterDescendantsInstances do
+            ReusableFilterList[i] = rayParams.FilterDescendantsInstances[i]
+        end
+    end
+
+    AdvancedRayParams.FilterType = rayParams.FilterType
+    AdvancedRayParams.IgnoreWater = rayParams.IgnoreWater
+    
+    for i = 1, 8 do
+        AdvancedRayParams.FilterDescendantsInstances = ReusableFilterList
+        local result = workspace:Raycast(origin, direction, AdvancedRayParams)
+        
+        if result and result.Instance:IsA("BasePart") then
+            -- Skip parts with transparency > 0 and <= 0.50 (windows, barriers, invisible walls) to prevent blocking
+            if AdvancedRayParams.FilterType == Enum.RaycastFilterType.Exclude and (result.Instance.Transparency > 0 and result.Instance.Transparency <= 0.50) then
+                -- However, if the hit is actually a player/humanoid, we MUST NOT skip it!
+                local model = result.Instance:FindFirstAncestorOfClass("Model")
+                if model and model:FindFirstChild("Humanoid") then
+                    return result 
+                end
+                
+                table.insert(ReusableFilterList, result.Instance)
+            else
+                return result
+            end
+        else
+            return result
+        end
+    end
+    return nil
+end
+
+-- ==========================================
 -- [[ PLAYER ENGINE ]]
 -- ==========================================
 
@@ -771,9 +654,7 @@ local function handlePlayer()
     
     if Settings.FlyEnabled then
         if Settings.FlyMode == "Hold" then
-            local flyKeyStr = UI.FlyKey and UI.FlyKey.CurrentKeybind or "None"
-            local flyKeyCode = getKeyCodeFromString(flyKeyStr)
-            FlyActive = flyKeyCode and UserInputService:IsKeyDown(flyKeyCode) or false
+            FlyActive = Options.FlyKey and Options.FlyKey:GetState() or false
         end
     else
         FlyActive = false
@@ -783,9 +664,7 @@ local function handlePlayer()
         if Settings.NoclipMode == "Always On" then
             NoclipActive = true
         elseif Settings.NoclipMode == "Hold" then
-            local noclipKeyStr = UI.NoclipKey and UI.NoclipKey.CurrentKeybind or "None"
-            local noclipKeyCode = getKeyCodeFromString(noclipKeyStr)
-            NoclipActive = noclipKeyCode and UserInputService:IsKeyDown(noclipKeyCode) or false
+            NoclipActive = Options.NoclipKey and Options.NoclipKey:GetState() or false
         end
     else
         NoclipActive = false
@@ -859,8 +738,15 @@ local function handlePlayer()
     end
 
     if Settings.BhopEnabled and hum and hrp and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-        if hum.MoveDirection.Magnitude > 0 then
-            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (Settings.BhopSpeed / 10))
+        if hum.FloorMaterial ~= Enum.Material.Air then
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+        
+        local moveDir = hum.MoveDirection
+        if moveDir.Magnitude > 0 then
+            local currentVel = hrp.Velocity
+            local speedMultiplier = DefaultWS + (Settings.BhopSpeed * 5)
+            hrp.Velocity = Vector3.new(moveDir.X * speedMultiplier, currentVel.Y, moveDir.Z * speedMultiplier)
         end
     end
 end
@@ -885,7 +771,7 @@ local function handleSpinbot()
         if rootJoint then OriginalC0s[char][rootJoint] = rootJoint.C0 end
     end
 
-    if Settings.SpinbotEnabled then
+    if Settings.PlayerMaster and Settings.SpinbotEnabled then
         hum.AutoRotate = false
 
         local speed = Settings.SpinbotSpeed
@@ -933,7 +819,7 @@ local function handleSpinbot()
 end
 
 -- ==========================================
--- [[ AIMBOT ENGINE ]]
+-- [[ AIMBOT & TRIGGERBOT ENGINE ]]
 -- ==========================================
 
 local function getLocalOrigin()
@@ -961,13 +847,20 @@ local function getTargetPart(character)
     return character:FindFirstChild("HumanoidRootPart")
 end
 
+local CachedAimbotRayParams = RaycastParams.new()
+CachedAimbotRayParams.FilterType = Enum.RaycastFilterType.Exclude
+CachedAimbotRayParams.IgnoreWater = true
+
+local CachedAimbotReverseParams = RaycastParams.new()
+CachedAimbotReverseParams.FilterType = Enum.RaycastFilterType.Exclude
+CachedAimbotReverseParams.IgnoreWater = true
+
 local function getVisiblePoint(targetPart, targetCharacter, checkWallbang)
     local origin = getLocalOrigin()
     local sizeX, sizeY, sizeZ = targetPart.Size.X / 2, targetPart.Size.Y / 2, targetPart.Size.Z / 2
     
-    -- Optimize by setting the param filter ONCE per character check to avoid memory leaks
     if checkWallbang and Settings.AimbotWallbang then
-        GlobalReverseRayParams.FilterDescendantsInstances = {targetCharacter, LocalPlayer.Character}
+        CachedAimbotReverseParams.FilterDescendantsInstances = {targetCharacter, LocalPlayer.Character}
     end
 
     for i = 1, #VisibilityOffsets do
@@ -975,7 +868,8 @@ local function getVisiblePoint(targetPart, targetCharacter, checkWallbang)
         local checkPos = targetPart.CFrame * Vector3.new(offset.X * sizeX, offset.Y * sizeY, offset.Z * sizeZ)
         local direction = checkPos - origin
         
-        local result = workspace:Raycast(origin, direction, GlobalRayParams)
+        CachedAimbotRayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+        local result = advancedRaycast(origin, direction, CachedAimbotRayParams)
         
         if not result or result.Instance:IsDescendantOf(targetCharacter) then
             return checkPos
@@ -983,7 +877,7 @@ local function getVisiblePoint(targetPart, targetCharacter, checkWallbang)
         
         -- Reverse Raycast Check (Auto Wall)
         if checkWallbang and Settings.AimbotWallbang then
-            local reverseResult = workspace:Raycast(checkPos, -direction, GlobalReverseRayParams)
+            local reverseResult = advancedRaycast(checkPos, -direction, CachedAimbotReverseParams)
             
             if result and reverseResult then
                 local thickness = (result.Position - reverseResult.Position).Magnitude
@@ -1077,8 +971,75 @@ local function executeShoot()
     end
 end
 
+-- Used for fast triggerbot caching
+local triggerbotRayParams = RaycastParams.new()
+local triggerbotFilter = {}
+
+local function handleTriggerbot()
+    if not Settings.AimMaster or not Settings.TriggerbotEnabled then return end
+
+    local origin, direction
+    if Settings.TriggerbotType == "Crosshair" then
+        local center = Camera.ViewportSize / 2
+        local ray = Camera:ViewportPointToRay(center.X, center.Y)
+        origin = ray.Origin
+        direction = ray.Direction * 1000
+    else
+        local mousePos = UserInputService:GetMouseLocation()
+        local ray = Camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+        origin = ray.Origin
+        direction = ray.Direction * 1000
+    end
+
+    if Settings.TriggerbotVisCheck then
+        triggerbotRayParams.FilterType = Enum.RaycastFilterType.Exclude
+        triggerbotRayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    else
+        table.clear(triggerbotFilter)
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then table.insert(triggerbotFilter, p.Character) end
+        end
+        triggerbotRayParams.FilterType = Enum.RaycastFilterType.Include
+        triggerbotRayParams.FilterDescendantsInstances = triggerbotFilter
+    end
+    triggerbotRayParams.IgnoreWater = true
+
+    local result = advancedRaycast(origin, direction, triggerbotRayParams)
+
+    if result and result.Instance then
+        local model = result.Instance:FindFirstAncestorOfClass("Model")
+        if model and model:FindFirstChild("Humanoid") and model.Humanoid.Health > 0 then
+            local targetPlayer = Players:GetPlayerFromCharacter(model)
+            
+            if targetPlayer and targetPlayer ~= LocalPlayer then
+                if Settings.TriggerbotTeamCheck and targetPlayer.Team == LocalPlayer.Team then return end
+                if Settings.AimIgnorePrisoners and targetPlayer.Team and targetPlayer.Team.Name == "Prisoner" then return end
+                if Settings.AimIgnoreForcefield and model:FindFirstChildOfClass("ForceField") then return end
+
+                local currentRate = 1 / math.max(1, Settings.AimbotAutoShootCPS)
+                if tick() - LastTriggerTime >= currentRate then
+                    if Settings.TriggerbotDelay > 0 then
+                        if not IsWaitingToTrigger then
+                            IsWaitingToTrigger = true
+                            task.spawn(function()
+                                task.wait(Settings.TriggerbotDelay / 1000)
+                                LastTriggerTime = tick()
+                                executeShoot()
+                                IsWaitingToTrigger = false
+                            end)
+                        end
+                    else
+                        LastTriggerTime = tick()
+                        executeShoot()
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function handleAimbot()
-    FOV_Circle.Visible = Settings.AimbotMaster and Settings.AimbotDrawFOV and not Settings.Aimbot360FOV
+    FOV_Circle.Visible = Settings.AimMaster and Settings.AimbotEnabled and Settings.AimbotDrawFOV and not Settings.Aimbot360FOV
     
     if FOV_Circle.Visible then
         FOV_Circle.Radius = Settings.AimbotFOVRadius
@@ -1095,7 +1056,7 @@ local function handleAimbot()
     elseif Settings.AimbotMouseBind == "Middle Click" then
         currentRawTrigger = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton3)
     else
-        currentRawTrigger = Settings.AimbotHolding 
+        currentRawTrigger = Options.AimbotKey and Options.AimbotKey:GetState() or false 
     end
 
     local isTriggered = false
@@ -1111,7 +1072,7 @@ local function handleAimbot()
         isTriggered = currentRawTrigger
     end
 
-    if Settings.AimbotMaster and isTriggered then
+    if Settings.AimMaster and Settings.AimbotEnabled and isTriggered then
         
         local targetIsValid = false
         if CurrentLockedTarget and CurrentLockedTarget.Character then
@@ -1273,6 +1234,7 @@ local function updateESP()
     handleEnvironment()
     handlePlayer()
     handleAimbot()
+    handleTriggerbot()
     handleSpinbot()
 
     if Settings.CameraFOVEnabled then
@@ -1315,30 +1277,6 @@ local function updateESP()
                 end
             end
 
-            local isVisible = true
-            if shouldCheckVis then
-                isVisible = false
-                LastRaycastTime[player] = tick()
-                local head = player.Character:FindFirstChild("Head")
-                local torso = player.Character:FindFirstChild("UpperTorso") or player.Character:FindFirstChild("Torso")
-                
-                -- False here ensures ESP doesn't falsely show penetrable walls as "open"
-                if head and getVisiblePoint(head, player.Character, false) then
-                    isVisible = true
-                elseif torso and getVisiblePoint(torso, player.Character, false) then
-                    isVisible = true
-                end
-                
-                if ESP_Cache[player] then ESP_Cache[player].IsVisible = isVisible end
-            elseif Settings.ESPVisCheck then
-                isVisible = ESP_Cache[player] and ESP_Cache[player].IsVisible or false
-            end
-            
-            if Settings.ESPVisCheck and not isVisible then
-                hideESP(player)
-                continue
-            end
-
             if not ESP_Cache[player] then
                 ESP_Cache[player] = {
                     Box2D = createDrawing("Square", {Thickness = 1, Filled = false, Transparency = 1}),
@@ -1347,10 +1285,36 @@ local function updateESP()
                     Tracer = createDrawing("Line", {Thickness = 1, Transparency = 1}),
                     Name = createDrawing("Text", {Size = 13, Center = true, Outline = true, Font = 2, Transparency = 1}),
                     Highlight = nil,
-                    IsVisible = true
+                    IsVisible = true,
+                    Character = nil,
+                    Parts = {}
                 }
-                for i = 1, 12 do table.insert(ESP_Cache[player].Box3D, createDrawing("Line", {Thickness = 1, Transparency = 1})) end
-                for i = 1, 15 do table.insert(ESP_Cache[player].Skeleton, createDrawing("Line", {Thickness = 1, Transparency = 1})) end
+                for j = 1, 12 do table.insert(ESP_Cache[player].Box3D, createDrawing("Line", {Thickness = 1, Transparency = 1})) end
+                for j = 1, 15 do table.insert(ESP_Cache[player].Skeleton, createDrawing("Line", {Thickness = 1, Transparency = 1})) end
+            end
+
+            local isVisible = true
+            if shouldCheckVis then
+                isVisible = false
+                LastRaycastTime[player] = tick()
+                
+                local head = getCachedPart(player, "Head")
+                local torso = getCachedPart(player, "UpperTorso") or getCachedPart(player, "Torso")
+                
+                if head and getVisiblePoint(head, player.Character, false) then
+                    isVisible = true
+                elseif torso and getVisiblePoint(torso, player.Character, false) then
+                    isVisible = true
+                end
+                
+                ESP_Cache[player].IsVisible = isVisible
+            elseif Settings.ESPVisCheck then
+                isVisible = ESP_Cache[player].IsVisible or false
+            end
+            
+            if Settings.ESPVisCheck and not isVisible then
+                hideESP(player)
+                continue
             end
 
             local Cache = ESP_Cache[player]
@@ -1392,13 +1356,12 @@ local function updateESP()
 
                 -- [[ SKELETON ESP ]] --
                 if Settings.SkelEnabled then
-                    local Char = player.Character
-                    local joints = Char:FindFirstChild("UpperTorso") and R15_Joints or R6_Joints
+                    local joints = player.Character:FindFirstChild("UpperTorso") and R15_Joints or R6_Joints
                     for j, line in ipairs(Cache.Skeleton) do
                         local pair = joints[j]
                         if pair then
-                            local p1_part = Char:FindFirstChild(pair[1])
-                            local p2_part = Char:FindFirstChild(pair[2])
+                            local p1_part = getCachedPart(player, pair[1])
+                            local p2_part = getCachedPart(player, pair[2])
                             if p1_part and p2_part then
                                 local sP1 = Camera:WorldToViewportPoint(p1_part.Position)
                                 local sP2 = Camera:WorldToViewportPoint(p2_part.Position)
@@ -1407,7 +1370,7 @@ local function updateESP()
                             else line.Visible = false end
                         else line.Visible = false end
                     end
-                    local head = Char:FindFirstChild("Head")
+                    local head = getCachedPart(player, "Head")
                     if head then
                         local headP = Camera:WorldToViewportPoint(head.Position)
                         Cache.HeadCircle.Visible = true; Cache.HeadCircle.Position = Vector2.new(headP.X, headP.Y); Cache.HeadCircle.Radius = 400 / Distance; Cache.HeadCircle.Color = SkelColor
@@ -1453,34 +1416,26 @@ local function updateESP()
     debug.profileend()
 end
 
--- = [[ WATERMARK HANDLER ]] = --
-local function handleWatermark()
-    if not Settings.WatermarkEnabled then
-        Watermark_Main.Visible = false; Watermark_Border.Visible = false; Watermark_Text.Visible = false
-        return
-    end
-    FPSFrameCount = FPSFrameCount + 1
-    if tick() - FPSTick >= 1 then CurrentFPS = FPSFrameCount; FPSFrameCount = 0; FPSTick = tick() end
-    local watermarkContent = string.format(" Project iWare | %s | %s FPS | %s ", LocalPlayer.Name, CurrentFPS, os.date("%X"))
-    Watermark_Text.Text = watermarkContent
-    local Margin, Padding = 20, 6
-    local ScreenSize = Camera.ViewportSize
-    local BoxSize = Vector2.new(Watermark_Text.TextBounds.X + (Padding * 2), Watermark_Text.TextBounds.Y + (Padding * 2))
-    local BoxPos
-    if Settings.WatermarkCorner == "Top Left" then BoxPos = Vector2.new(Margin, Margin)
-    elseif Settings.WatermarkCorner == "Top Right" then BoxPos = Vector2.new(ScreenSize.X - BoxSize.X - Margin, Margin)
-    elseif Settings.WatermarkCorner == "Bottom Left" then BoxPos = Vector2.new(Margin, ScreenSize.Y - BoxSize.Y - Margin)
-    elseif Settings.WatermarkCorner == "Bottom Right" then BoxPos = Vector2.new(ScreenSize.X - BoxSize.X - Margin, ScreenSize.Y - BoxSize.Y - Margin) end
-    Watermark_Main.Size = BoxSize; Watermark_Main.Position = BoxPos; Watermark_Main.Visible = true
-    Watermark_Border.Size = BoxSize; Watermark_Border.Position = BoxPos; Watermark_Border.Visible = true
-    Watermark_Text.Position = BoxPos + Vector2.new(Padding, Padding); Watermark_Text.Visible = true
-end
-
 -- [[ START ]] --
 Players.PlayerRemoving:Connect(removeESP)
+
 RunService.RenderStepped:Connect(function()
     updateESP()
-    handleWatermark()
+    
+    if Settings.WatermarkEnabled then
+        FPSFrameCount = FPSFrameCount + 1
+        if tick() - FPSTick >= 1 then 
+            CurrentFPS = FPSFrameCount
+            FPSFrameCount = 0 
+            FPSTick = tick() 
+        end
+        
+        Library:SetWatermark((' peekachu | %s | %s FPS | %s '):format(
+            LocalPlayer.Name,
+            CurrentFPS,
+            os.date("%X")
+        ))
+    end
 end)
 
-Rayfield:Notify({Title = "System", Content = "Fully Optimized Loop Engaged", Duration = 5})
+Library:Notify("System: peekachu Loaded Successfully", 5)
