@@ -461,6 +461,16 @@ if Options.AccentColor then
 end
 
 -- ==========================================
+-- [[ DYNAMIC KEYBIND HIDING ]]
+-- ==========================================
+for key, option in pairs(Options) do
+    if option.Type == 'KeyPicker' and key ~= 'MenuKeybind' then
+        option:OnChanged(function() option.NoUI = (option.Value == 'None') end)
+        option.NoUI = (option.Value == 'None')
+    end
+end
+
+-- ==========================================
 -- [[ CORE LOGIC HANDLERS ]]
 -- ==========================================
 
