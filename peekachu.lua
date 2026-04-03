@@ -72,11 +72,17 @@ local Settings = {
     StatsEnabled = false, WalkSpeed = DefaultWS, JumpPower = DefaultJP,
     BhopEnabled = false, BhopSpeed = 5,
 
-    -- [[ SPINBOT SETTINGS ]] --
+    -- [[ SPINBOT & ANTI AIM SETTINGS ]] --
     SpinbotEnabled = false,
     SpinbotPitch = "None",
     SpinbotYaw = "Clockwise",
     SpinbotSpeed = 10,
+    
+    AntiAimEnabled = false,
+    AAPitch = "Down",
+    AAYaw = "Backward",
+    AAYawBase = "Camera",
+    AASpinSpeed = 10,
 
     -- Chams
     ChamsEnabled = false, ChamsColor = Color3.fromRGB(255, 0, 0), ChamsChroma = false, ChamsTeamColor = false,
@@ -206,10 +212,29 @@ NoclipSection:AddLabel("Noclip Keybind"):AddKeyPicker("NoclipKey", {Default = 'N
 Options.NoclipKey:OnClick(function() if Settings.MovementMaster and Settings.NoclipEnabled and Settings.NoclipMode == "Toggle" then NoclipActive = not NoclipActive end end)
 
 local SpinbotSection = Tabs.Movement:AddLeftGroupbox("Spinbot")
-SpinbotSection:AddToggle("SpinbotEnabled", {Text = "Spinbot", Default = false, Callback = function(v) Settings.SpinbotEnabled = v end})
-SpinbotSection:AddDropdown("SpinbotPitch", {Values = {"None", "Sky", "Ground"}, Default = 1, Text = "Face Direction (Pitch)", Callback = function(v) Settings.SpinbotPitch = v end})
-SpinbotSection:AddDropdown("SpinbotYaw", {Values = {"Clockwise", "Counter-Clockwise", "Jitter"}, Default = 1, Text = "Spin Direction (Yaw)", Callback = function(v) Settings.SpinbotYaw = v end})
+SpinbotSection:AddToggle("SpinbotEnabled", {Text = "Spinbot", Default = false, Callback = function(v) 
+    if v and Settings.AntiAimEnabled then
+        Library:Notify("Anti Aim disabled to prevent conflicts with Spinbot.", 3)
+        Toggles.AntiAimEnabled:SetValue(false)
+    end
+    Settings.SpinbotEnabled = v 
+end})
+SpinbotSection:AddDropdown("SpinbotPitch", {Values = {"None", "Sky", "Ground"}, Default = 1, Text = "Pitch (Vertical)", Callback = function(v) Settings.SpinbotPitch = v end})
+SpinbotSection:AddDropdown("SpinbotYaw", {Values = {"Clockwise", "Counter-Clockwise", "Jitter"}, Default = 1, Text = "Yaw (Horizontal)", Callback = function(v) Settings.SpinbotYaw = v end})
 SpinbotSection:AddSlider("SpinbotSpeed", {Text = "Spin Speed", Default = 10, Min = 1, Max = 100, Rounding = 0, Suffix = " °/f", Callback = function(v) Settings.SpinbotSpeed = v end})
+
+local AntiAimSection = Tabs.Movement:AddLeftGroupbox("Anti Aim")
+AntiAimSection:AddToggle("AntiAimEnabled", {Text = "Anti Aim", Default = false, Callback = function(v) 
+    if v and Settings.SpinbotEnabled then
+        Library:Notify("Spinbot disabled to prevent conflicts with Anti Aim.", 3)
+        Toggles.SpinbotEnabled:SetValue(false)
+    end
+    Settings.AntiAimEnabled = v 
+end})
+AntiAimSection:AddDropdown("AAPitch", {Values = {"Down", "Up", "Zero", "Jitter"}, Default = 1, Text = "Pitch (Vertical)", Callback = function(v) Settings.AAPitch = v end})
+AntiAimSection:AddDropdown("AAYaw", {Values = {"Backward", "Left", "Right", "Jitter", "Spin"}, Default = 1, Text = "Yaw (Horizontal)", Callback = function(v) Settings.AAYaw = v end})
+AntiAimSection:AddDropdown("AAYawBase", {Values = {"Camera", "Closest Target"}, Default = 1, Text = "Yaw Base", Callback = function(v) Settings.AAYawBase = v end})
+AntiAimSection:AddSlider("AASpinSpeed", {Text = "AA Spin Speed", Default = 10, Min = 1, Max = 100, Rounding = 0, Suffix = " °/f", Callback = function(v) Settings.AASpinSpeed = v end})
 
 local JumpSection = Tabs.Movement:AddRightGroupbox("Jumping")
 JumpSection:AddToggle("InfJumpEnabled", {Text = "Infinite Jump", Default = false, Callback = function(v) Settings.InfJumpEnabled = v end})
@@ -495,6 +520,7 @@ local IsWaitingToShoot = false
 local PreviousTriggerState = false
 local AimbotToggled = false
 local SpinbotAngle = 0
+local AASpinAngle = 0
 
 local LastTriggerTime = 0
 local IsWaitingToTrigger = false
@@ -810,10 +836,10 @@ local function handleMovement()
 end
 
 -- ==========================================
--- [[ SPINBOT ENGINE ]]
+-- [[ CHARACTER ROTATION ENGINE (SPINBOT / ANTI AIM) ]]
 -- ==========================================
 
-local function handleSpinbot()
+local function handleCharacterRotation(activePlayers)
     local char = LocalPlayer.Character
     if not char then return end
     
@@ -829,33 +855,106 @@ local function handleSpinbot()
         if rootJoint then OriginalC0s[char][rootJoint] = rootJoint.C0 end
     end
 
-    if Settings.MovementMaster and Settings.SpinbotEnabled then
+    if Settings.MovementMaster and (Settings.SpinbotEnabled or Settings.AntiAimEnabled) then
         hum.AutoRotate = false
 
-        local speed = Settings.SpinbotSpeed
-        local yaw = Settings.SpinbotYaw
-        local pitch = Settings.SpinbotPitch
-
-        if yaw == "Clockwise" then
-            SpinbotAngle = (SpinbotAngle - speed) % 360
-        elseif yaw == "Counter-Clockwise" then
-            SpinbotAngle = (SpinbotAngle + speed) % 360
-        elseif yaw == "Jitter" then
-            SpinbotAngle = (SpinbotAngle + math.random(135, 225)) % 360
-        end
-
+        local targetCFrame = hrp.CFrame
         local pitchAngle = 0
-        if pitch == "Ground" then
-            pitchAngle = math.rad(-75)
-        elseif pitch == "Sky" then
-            pitchAngle = math.rad(75)
+        
+        if Settings.SpinbotEnabled then
+            local speed = Settings.SpinbotSpeed
+            local yaw = Settings.SpinbotYaw
+            local pitch = Settings.SpinbotPitch
+
+            if yaw == "Clockwise" then
+                SpinbotAngle = (SpinbotAngle - speed) % 360
+            elseif yaw == "Counter-Clockwise" then
+                SpinbotAngle = (SpinbotAngle + speed) % 360
+            elseif yaw == "Jitter" then
+                SpinbotAngle = (SpinbotAngle + math.random(135, 225)) % 360
+            end
+
+            if pitch == "Ground" then
+                pitchAngle = math.rad(-75)
+            elseif pitch == "Sky" then
+                pitchAngle = math.rad(75)
+            end
+
+            if yaw ~= "None" then
+                targetCFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.rad(SpinbotAngle), 0)
+            end
+            
+        elseif Settings.AntiAimEnabled then
+            local speed = Settings.AASpinSpeed
+            local yaw = Settings.AAYaw
+            local pitch = Settings.AAPitch
+            local base = Settings.AAYawBase
+
+            -- [[ Pitch Logic ]]
+            if pitch == "Down" then
+                pitchAngle = math.rad(-75)
+            elseif pitch == "Up" then
+                pitchAngle = math.rad(75)
+            elseif pitch == "Jitter" then
+                pitchAngle = math.random() > 0.5 and math.rad(-75) or math.rad(75)
+            end
+
+            -- [[ Yaw Base Logic ]]
+            local baseYaw = 0
+            if base == "Closest Target" then
+                local targetToFace = CurrentLockedTarget
+                
+                -- If no locked target, scan for the absolute closest physical enemy
+                if not targetToFace or not targetToFace.Character then
+                    local shortestDist = math.huge
+                    for _, p in ipairs(activePlayers) do
+                        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+                            if Settings.TeamCheck and p.Team == LocalPlayer.Team then continue end
+                            if Settings.IgnorePrisoners and p.Team and p.Team.Name == "Prisoner" then continue end
+                            
+                            local dist = (p.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                            if dist < shortestDist then
+                                shortestDist = dist
+                                targetToFace = p
+                            end
+                        end
+                    end
+                end
+                
+                if targetToFace and targetToFace.Character and targetToFace.Character:FindFirstChild("HumanoidRootPart") then
+                    local targetPos = targetToFace.Character.HumanoidRootPart.Position
+                    local _, targetEulerYaw, _ = CFrame.new(hrp.Position, Vector3.new(targetPos.X, hrp.Position.Y, targetPos.Z)):ToEulerAnglesYXZ()
+                    baseYaw = targetEulerYaw
+                else
+                    local _, camYaw, _ = Camera.CFrame:ToEulerAnglesYXZ()
+                    baseYaw = camYaw
+                end
+            else
+                local _, camYaw, _ = Camera.CFrame:ToEulerAnglesYXZ()
+                baseYaw = camYaw
+            end
+
+            -- [[ Yaw Offset Logic ]]
+            local yawOffset = 0
+            if yaw == "Backward" then
+                yawOffset = math.pi
+            elseif yaw == "Left" then
+                yawOffset = math.pi / 2
+            elseif yaw == "Right" then
+                yawOffset = -math.pi / 2
+            elseif yaw == "Jitter" then
+                yawOffset = math.pi + math.rad(math.random(-60, 60))
+            elseif yaw == "Spin" then
+                AASpinAngle = (AASpinAngle + speed) % 360
+                yawOffset = math.rad(AASpinAngle)
+            end
+
+            targetCFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, baseYaw + yawOffset, 0)
         end
 
-        if yaw ~= "None" then
-            local oldVel = hrp.Velocity
-            hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.rad(SpinbotAngle), 0)
-            hrp.Velocity = oldVel
-        end
+        local oldVel = hrp.Velocity
+        hrp.CFrame = targetCFrame
+        hrp.Velocity = oldVel
 
         local R15 = hum.RigType == Enum.HumanoidRigType.R15
         local waist = char:FindFirstChild("UpperTorso") and char.UpperTorso:FindFirstChild("Waist")
@@ -1329,7 +1428,7 @@ local function updateESP(activePlayers)
     handleMovement()
     handleAimbot(activePlayers)
     handleTriggerbot(activePlayers)
-    handleSpinbot()
+    handleCharacterRotation(activePlayers)
 
     if Settings.CameraFOVEnabled then
         Camera.FieldOfView = Settings.CameraFOV
